@@ -16,7 +16,7 @@ import time
 # from models.resnet32_cifar10_grasp import resnet32
 # from models.vgg_grasp import vgg19, vgg16
 # from models.resnet20_cifar import resnet20
-from models.resnet18_cifar import resnet18
+from models.resnet18_cifar import resnet18, NCM
 
 from torch.optim.lr_scheduler import _LRScheduler
 
@@ -32,6 +32,12 @@ from prune_utils import *
 from datasets import get_dataset
 from utils.buffer import Buffer
 
+from utils.loss import SupConLoss
+from kornia.augmentation import RandomResizedCrop, RandomHorizontalFlip, ColorJitter, RandomGrayscale
+import torchvision.transforms as transforms
+
+# Logging
+import wandb
 
 # Training settings
 parser = argparse.ArgumentParser(description='PyTorch CIFAR training')
@@ -102,6 +108,9 @@ parser.add_argument('--sparsity-type', type=str, default='random-pattern',
 parser.add_argument('--config-file', type=str, default='config_vgg16',
                     help="config file name")
 
+parser.add_argument('--iter', type=int, default=10, help='number of iteration')
+
+
 
 # ------- argments for CL setup ----------
 parser.add_argument('--use_cl_mask', action='store_true', default=False, help='use CL mask or not')
@@ -150,23 +159,20 @@ parser.add_argument('--keep-lowest-n', type=int, default=0,
 parser.add_argument('--sorting-file', type=str, default=None, help='input file name for sorted pkl file')
 parser.add_argument('--input-dir', type=str, default=".", help='input dir for sorted pkl file')
 
+# ------- NCM setup ----------
+parser.add_argument('--ncm', action='store_true', default=False, help='using NCM classifier')
+
+
 prune_parse_arguments(parser)
 args = parser.parse_args()
 
-# torch.backends.cudnn.deterministic = True
-# torch.backends.cudnn.benchmark = False
+log_name = args.arch + str(args.depth)
+if args.ncm: log_name += '-ncm'
+
+wandb.login()
+wandb.init(config=args, project='SparseCL', name=log_name)
 
 args.cuda = not args.no_cuda and torch.cuda.is_available()
-
-if args.rand_seed:
-    seed = random.randint(1, 999)
-    print("Using random seed:", seed)
-else:
-    seed = args.seed
-    torch.manual_seed(seed)
-    if args.cuda:
-        torch.cuda.manual_seed(seed)
-    print("Using manual seed:", seed)
 
 if not os.path.exists(args.save_model):
     os.makedirs(args.save_model)
@@ -253,7 +259,7 @@ class GradualWarmupScheduler(_LRScheduler):
 
 
 def train(model, trainset, criterion, scheduler, optimizer, epoch, t, buffer, dataset,
-    example_stats_train, train_indx, maskretrain, masks, cl_mask=None):
+    example_stats_train, train_indx, maskretrain, masks, cl_mask=None, ncm_classifier=None):
     batch_time = AverageMeter()
     data_time = AverageMeter()
     losses = AverageMeter()
@@ -264,14 +270,15 @@ def train(model, trainset, criterion, scheduler, optimizer, epoch, t, buffer, da
     total = 0.
     # switch to train mode
     model.train()
+    start = time.time()
 
     # Get permutation to shuffle trainset
     trainset_permutation_inds = npr.permutation(
         np.arange(len(trainset.targets)))   #numpy random permutation
     batch_size = args.batch_size
     end = time.time()
-    for batch_idx, batch_start_ind in enumerate(
-            range(0, len(trainset.targets), batch_size)):
+
+    for batch_idx, batch_start_ind in enumerate(range(0, len(trainset.targets), batch_size)):
         data_time.update(time.time() - end)
 
         # prune_update_learning_rate(optimizer, epoch, args)
@@ -284,6 +291,7 @@ def train(model, trainset, criterion, scheduler, optimizer, epoch, t, buffer, da
         # Get batch inputs and targets, transform them appropriately
         transformed_trainset = []
         not_transformed_trainset = []
+
         for ind in batch_inds:
             transformed_trainset.append(trainset.__getitem__(ind)[0])
             not_transformed_trainset.append(trainset.__getitem__(ind)[2])
@@ -306,7 +314,11 @@ def train(model, trainset, criterion, scheduler, optimizer, epoch, t, buffer, da
                     args.batch_size, transform=dataset.get_transform())
                 if not args.merge_batch or (t == 0):
                     # compute output
-                    outputs = model(inputs)
+                    if args.ncm:
+                        outputs = model(inputs, returnt='features')
+                        ncm_classifier.update_class_centers(outputs, targets)
+                    else:
+                        outputs = model(inputs)
                     # add CL per task mask
                     if cl_mask is not None:
                         mask_add_on = torch.zeros_like(outputs)
@@ -317,7 +329,11 @@ def train(model, trainset, criterion, scheduler, optimizer, epoch, t, buffer, da
                         ce_loss = criterion(outputs, targets)   
                     # do an additional forward
                         # print("Buffer training!")
-                    buf_output = model(buf_inputs)
+                    if args.ncm:
+                        buf_output = model(buf_inputs, returnt='features')
+                        ncm_classifier.update_class_centers(buf_output, buf_labels)
+                    else:
+                        buf_output = model(buf_inputs)
                     buf_ce_loss = criterion(buf_output, buf_labels)
                     # ce_loss = ce_loss.mean()
                     # buf_ce_loss = buf_ce_loss.mean()
@@ -327,7 +343,11 @@ def train(model, trainset, criterion, scheduler, optimizer, epoch, t, buffer, da
                     cat_inputs = torch.cat([inputs, buf_inputs], dim=0)
                     cat_targets = torch.cat([targets, buf_labels])
                     # compute output
-                    cat_outputs = model(cat_inputs)
+                    if args.ncm:
+                        cat_outputs = model(cat_inputs, returnt='features')
+                        ncm_classifier.update_class_centers(cat_outputs, cat_targets)
+                    else:
+                        cat_outputs = model(cat_inputs)
                     # make sure only count non-buffer data
                     outputs = cat_outputs[:args.batch_size]
                     # add CL per task mask
@@ -343,7 +363,11 @@ def train(model, trainset, criterion, scheduler, optimizer, epoch, t, buffer, da
 
             else: # if using der or derpp
                 # compute output
-                outputs = model(inputs)
+                if args.ncm:
+                    outputs = model(inputs, returnt='features')
+                    ncm_classifier.update_class_centers(outputs, targets)
+                else:
+                    outputs = model(inputs)
                 # add CL per task mask
                 if cl_mask is not None:
                     mask_add_on = torch.zeros_like(outputs)
@@ -357,7 +381,11 @@ def train(model, trainset, criterion, scheduler, optimizer, epoch, t, buffer, da
                 if args.replay_method == "der":
                     buf_inputs, buf_logits = buffer.get_data(
                         args.batch_size, transform=dataset.get_transform())
-                    buf_output = model(buf_inputs)
+                    if args.ncm:
+                        buf_output = model(buf_inputs, returnt='features')
+                        ncm_classifier.update_class_centers(buf_output, buf_logits)
+                    else:
+                        buf_output = model(buf_inputs)
                     buf_mse_loss = F.mse_loss(buf_output, buf_logits, reduction="none")
                     buf_mse_loss = torch.mean(buf_mse_loss, axis=-1)
                     # ce_loss = ce_loss.mean()
@@ -365,9 +393,14 @@ def train(model, trainset, criterion, scheduler, optimizer, epoch, t, buffer, da
                     ce_loss += args.buffer_weight * buf_mse_loss
 
                 elif args.replay_method == "derpp":
-                    buf_inputs, _, buf_logits = buffer.get_data(
+                    buf_inputs, buf_labels, buf_logits = buffer.get_data(
                         args.batch_size, transform=dataset.get_transform())
-                    buf_output = model(buf_inputs)
+                    if args.ncm:
+                        buf_output = model(buf_inputs, returnt='features')
+                        ncm_classifier.update_class_centers(buf_output, buf_labels)
+                        buf_output = ncm_classifier(buf_output)
+                    else:
+                        buf_output = model(buf_inputs)
                     # print(buf_inputs.shape)
                     buf_mse_loss = F.mse_loss(buf_output, buf_logits, reduction="none")
                     buf_mse_loss = torch.mean(buf_mse_loss, axis=-1)
@@ -380,7 +413,11 @@ def train(model, trainset, criterion, scheduler, optimizer, epoch, t, buffer, da
                     buf_inputs, buf_labels, _ = buffer.get_data(
                         args.batch_size, transform=dataset.get_transform())
                     # print(buf_inputs.shape)
-                    buf_output = model(buf_inputs)
+                    if args.ncm:
+                        buf_output = model(buf_inputs, returnt='features')
+                        ncm_classifier.update_class_centers(buf_output, buf_labels)
+                    else:
+                        buf_output = model(buf_inputs)
                     buf_ce_loss = criterion(buf_output, buf_labels)
                     # print(ce_loss.shape, buf_ce_loss.shape)
                     # exit(0)
@@ -389,7 +426,11 @@ def train(model, trainset, criterion, scheduler, optimizer, epoch, t, buffer, da
                 
         else: # no replay
             # compute output
-            outputs = model(inputs)
+            if args.ncm:
+                outputs = model(inputs, returnt='features')
+                ncm_classifier.update_class_centers(outputs, targets)
+            else:
+                outputs = model(inputs)
             # add CL per task mask
             if cl_mask is not None:
                 mask_add_on = torch.zeros_like(outputs)
@@ -402,6 +443,10 @@ def train(model, trainset, criterion, scheduler, optimizer, epoch, t, buffer, da
 
 
         # loss = criterion(outputs, targets)
+        if args.ncm:
+            distances = ncm_classifier(outputs)
+            outputs = ncm_classifier.classification(distances)
+
         _, predicted = torch.max(outputs.data, 1)
 
         # Update statistics and loss
@@ -487,12 +532,20 @@ def train(model, trainset, criterion, scheduler, optimizer, epoch, t, buffer, da
                   'Time {batch_time.val:.3f} ({batch_time.avg:.3f})\t'
                   'Data {data_time.val:.3f} ({data_time.avg:.3f})\t'
                   .format(
-                    epoch, batch_idx, (len(trainset) // batch_size) + 1,
-                    current_lr,
-                    loss.item(), 100. * correct.item() / total,
-                    batch_time=batch_time,
-                    data_time=data_time
+                    epoch, batch_idx, (len(trainset) // batch_size) + 1, # Epoch
+                    current_lr, # LR
+                    loss.item(), # Loss
+                    100. * correct.item() / total,  # Acc@1
+                    batch_time=batch_time,  # Time
+                    data_time=data_time # Data
             ))
+
+        acc = 100. * correct.item() / total
+        top1.update(acc)
+
+    train_time = time.time() - start    # all dataset training time
+
+    return top1, train_time
 
 
 class AverageMeter(object):
@@ -544,7 +597,7 @@ def mask_classes(outputs, dataset, k):
                dataset.N_TASKS * dataset.N_CLASSES_PER_TASK] = -float('inf')
             
 
-def test(model, dataset):
+def test(model, dataset, ncm_classifier=None):
     model.eval()
     acc_list = np.zeros((dataset.N_TASKS, ))
     til_acc_list = np.zeros((dataset.N_TASKS, ))
@@ -559,10 +612,17 @@ def test(model, dataset):
                 if args.cuda:
                     img, target = img.cuda(), target.cuda()
                 img, target = Variable(img, volatile=True), Variable(target)
-                output = model(img)
+                if args.ncm:
+                    output = model(img, returnt='features')
+                else:
+                    output = model(img)
+                
                 criterion = nn.CrossEntropyLoss()
                 test_loss = criterion(output, target)
                 # test_loss += F.cross_entropy(output, target, size_average=False).data[0] # sum up batch loss
+                if args.ncm: 
+                    distances = ncm_classifier(output)
+                    output = ncm_classifier.classification(distances)
                 pred = output.data.max(1, keepdim=True)[1]  # get the index of the max log-probability
                 # pred for task incremental
                 mask_classes(output, dataset, task)
@@ -580,7 +640,7 @@ def test(model, dataset):
     return acc_list, til_acc_list
 
 
-def evaluate(model, dataset, last=False):
+def evaluate(model, dataset, last=False, ncm_classifier=None):
     """
     Evaluates the accuracy of the model for each past task.
     :param model: the model to be evaluated
@@ -588,6 +648,7 @@ def evaluate(model, dataset, last=False):
     :return: a tuple of lists, containing the class-il
              and task-il accuracy for each task
     """
+    start = time.time()
     model.eval()
     accs = np.zeros((dataset.N_TASKS, ))
     accs_mask_classes = np.zeros((dataset.N_TASKS, ))
@@ -602,7 +663,12 @@ def evaluate(model, dataset, last=False):
                 # if 'class-il' not in model.COMPATIBILITY:
                 #     outputs = model(inputs, k)
                 # else:
-                outputs = model(inputs)
+                if args.ncm:
+                    feature = model(inputs, returnt='features')
+                    distances = ncm_classifier(feature)
+                    outputs = ncm_classifier.classification(distances)
+                else:
+                    outputs = model(inputs)
 
                 _, pred = torch.max(outputs.data, 1)
                 correct += torch.sum(pred == labels).item()
@@ -618,7 +684,9 @@ def evaluate(model, dataset, last=False):
         # accs_mask_classes.append(correct_mask_classes / total * 100)
         accs_mask_classes[k] = correct_mask_classes / total * 100
 
-    return accs, accs_mask_classes
+    inf_time = time.time() - start    # all dataset training time
+
+    return accs, accs_mask_classes, inf_time
 
 
 def compute_forgetting_statistics(diag_stats, npresentations):
@@ -717,7 +785,6 @@ def check_filename(fname, args_list):
 
     return 1
 
-
 # Format time for printing purposes
 def get_hms(seconds):
     m, s = divmod(seconds, 60)
@@ -737,7 +804,12 @@ def main():
                 sys.exit("vgg doesn't have those depth!")
         elif args.arch == "resnet":
             if args.depth == 18:
-                model = resnet18(dataset=args.dataset)
+                model = resnet18(dataset=args.dataset)  # resnet-18
+                if args.ncm:
+                    model.classifier = nn.Identity()
+                    ncm_classifier = NCM(num_classes=10)
+                else:
+                    ncm_classifier = None
             elif args.depth == 20:
                 model = resnet20(dataset=args.dataset)
             elif args.depth == 32:
@@ -750,10 +822,10 @@ def main():
         if args.multi_gpu:
             model = torch.nn.DataParallel(model)
         model.cuda()
-
+    
     criterion = nn.CrossEntropyLoss().cuda()
     criterion.__init__(reduce=False)
-
+    # criterion = SupConLoss(contrast_mode='one').cuda()
 
     # ----------- load checkpoint ---------------------
     model_state = None
@@ -780,7 +852,6 @@ def main():
         model.load_state_dict(model_state)
 
     log_filename = args.log_filename
-    print(log_filename)
 
     log_filename_dir_str = log_filename.split('/')
     log_filename_dir = "/".join(log_filename_dir_str[:-1])
@@ -803,7 +874,6 @@ def main():
 
     _, total_sparsity = test_sparsity(model, column=False, channel=False, filter=False, kernel=False)
 
-
     # CL buffer and dataset setup
     dataset = get_dataset(args)
     print("*"*10 + f"Inspecting {args.dataset}" + "*"*10)
@@ -819,181 +889,236 @@ def main():
     # Initialize dictionary to save statistics for every example presentation
     # example_stats_train = {}  # change name because fogetting function also have example_stats
 
+    train_acc = np.zeros((dataset.N_TASKS, args.iter))
+    test_acc = np.zeros((dataset.N_TASKS, args.iter))
+    train_time = AverageMeter()
+    inf_time = AverageMeter()
+
+    for n_iter in range(args.iter):
+        if args.rand_seed:
+            seed = random.randint(1, 999)
+            print("Using random seed:", seed)
+        else:
+            seed = args.seed
+
+        if n_iter > 0: seed += args.iter
+
+        random.seed(seed)
+        np.random.seed(seed)
+        torch.manual_seed(seed)
+        if args.cuda:
+            torch.cuda.manual_seed(seed)
+            torch.cuda.manual_seed_all(seed)
+        # torch.backends.cudnn.deterministic = True
+        # torch.backends.cudnn.benchmark = False
+        print("Using manual seed:", seed)
+
+
+        for t in range(dataset.N_TASKS):
+            # do it per task
+            example_stats_train = {}  
+
+            optimizer_init_lr = args.warmup_lr if args.warmup else args.lr
+
+            optimizer = None
+            if (args.optmzr == 'sgd'):
+                # optimizer = torch.optim.SGD(model.parameters(), optimizer_init_lr, momentum=0.9, weight_decay=1e-4)
+                optimizer = torch.optim.SGD(model.parameters(), optimizer_init_lr) # CL no momentum and wd
+            elif (args.optmzr == 'adam'):
+                optimizer = torch.optim.Adam(model.parameters(), optimizer_init_lr)
+
+            scheduler = None
+
+            # initialize training dataset and full dataset here
+            _, _, train_dataset, test_dataset = dataset.get_data_loaders(return_dataset=True)
+            full_dataset = copy.deepcopy(train_dataset)
+            # full_test_dataset = copy.deepcopy(test_dataset)
+
+            if args.sorting_file == None:
+                train_indx = np.array(range(len(full_dataset.targets)))
+                # test_indx = np.array(range(len(full_test_dataset.targets)))
+            else:
+                try:
+                    with open(
+                            os.path.join(args.input_dir, args.sorting_file) + '.pkl',
+                            'rb') as fin:
+                        ordered_indx = pickle.load(fin)['indices']
+                except IOError:
+                    with open(os.path.join(args.input_dir, args.sorting_file),
+                            'rb') as fin:
+                        ordered_indx = pickle.load(fin)['indices']
+
+                # Get the indices to remove from training
+                elements_to_remove = np.array(ordered_indx)[-1:-1 + args.remove_n]
+                print('elements_to_remove', len(elements_to_remove))
+
+                # Remove the corresponding elements
+                train_indx = np.setdiff1d(range(len(train_dataset.targets)), elements_to_remove)
+                print('train_indx', len(train_indx))
+
+            # Reassign train data and labels and save the removed data
+            train_dataset.data = full_dataset.data[train_indx, :, :, :]
+            # test_dataset.data = full_test_dataset.data[test_indx, :, :, :]
+            print(train_dataset.data.shape)  # (10000, 32, 32, 3)
+            # print(test_dataset.data.shape)  # (2000, 32, 32, 3)
+
+            train_dataset.targets = np.array(full_dataset.targets)[train_indx].tolist()
+            # test_dataset.targets = np.array(full_test_dataset.targets)[test_indx].tolist()
+            print('len(train_dataset.targets)', len(train_dataset.targets))
+            # print('len(test_dataset.targets)', len(test_dataset.targets))
+
+            if args.use_cl_mask:    # True
+                cur_classes = np.arange(t*dataset.N_CLASSES_PER_TASK, (t+1)*dataset.N_CLASSES_PER_TASK)
+                cl_mask = np.setdiff1d(np.arange(dataset.TOTAL_CLASSES), cur_classes)
+            else:
+                cl_mask = None
+
+            for epoch in range(int(args.epochs/dataset.N_TASKS)):
+                prune_update(epoch)
+                optimizer.zero_grad()
+                
+                #########remove data at 25 epoch, update dataset ######
+                if epoch > 0 and epoch % args.sp_mask_update_freq == 0 and epoch <= args.remove_data_epoch: # remove_data_epoch ??????????????????????????
+                    if args.sorting_file == None:
+                        print('epoch', epoch)
+
+                        unlearned_per_presentation_all, first_learned_all = [], []
+
+                        _, unlearned_per_presentation, _, first_learned = compute_forgetting_statistics(example_stats_train, int(args.epochs/dataset.N_TASKS))
+                        print('unlearned_per_presentation', len(unlearned_per_presentation))
+                        print('first_learned', len(first_learned))
+
+                        unlearned_per_presentation_all.append(unlearned_per_presentation)
+                        first_learned_all.append(first_learned)
+
+                        print('unlearned_per_presentation_all', len(unlearned_per_presentation_all))
+                        print('first_learned_all', len(first_learned_all))
+
+                        # print('epoch before sort ordered_examples len',len(ordered_examples))
+
+                        # Sort examples by forgetting counts in ascending order, over one or more training runs
+                        ordered_examples, ordered_values, num_unforget = sort_examples_by_forgetting(unlearned_per_presentation_all, first_learned_all, int(args.epochs/dataset.N_TASKS))
+
+                        # Save sorted output
+                        if args.output_name.endswith('.pkl'):
+                            with open(os.path.join(args.output_dir, args.output_name + "_task_"+ str(t) + "_unforget_"+str(num_unforget)),
+                                    'wb') as fout:
+                                pickle.dump({
+                                    'indices': ordered_examples,
+                                    'forgetting counts': ordered_values
+                                }, fout)
+                        else:
+                            with open(
+                                    os.path.join(args.output_dir, args.output_name + "_task_"+ str(t) + "_unforget_"+str(num_unforget) + '.pkl'),
+                                    'wb') as fout:
+                                pickle.dump({
+                                    'indices': ordered_examples,
+                                    'forgetting counts': ordered_values
+                                }, fout)
+
+                        # Get the indices to remove from training
+                        print('epoch before ordered_examples len', len(ordered_examples))
+                        print('epoch before len(train_dataset.targets)', len(train_dataset.targets))
+                        elements_to_remove = np.array(
+                            ordered_examples)[args.keep_lowest_n:args.keep_lowest_n + ( int(args.remove_n/( int(args.remove_data_epoch)/args.sp_mask_update_freq ) ) )]
+                        # Remove the corresponding elements
+                        print('elements_to_remove', len(elements_to_remove))
+
+                        train_indx = np.setdiff1d(
+                            # range(len(train_dataset.targets)), elements_to_remove)
+                            train_indx, elements_to_remove)
+                        print('removed train_indx', len(train_indx))
+
+                        # Reassign train data and labels
+                        train_dataset.data = full_dataset.data[train_indx, :, :, :]
+                        train_dataset.targets = np.array(
+                            full_dataset.targets)[train_indx].tolist()
+
+                        print('shape', train_dataset.data.shape)
+                        print('len(train_dataset.targets)', len(train_dataset.targets))
+
+                        # print('epoch after random ordered_examples len', len(ordered_examples))
+                        #####empty example_stats_train!!! Because in original, forget process come before the whole training process
+                        example_stats_train = {}
+                    ##########
+
+                if args.ncm:
+                    print('Training on ' + str(len(train_dataset.targets)) + ' examples with NCM')
+                else:
+                    print('Training on ' + str(len(train_dataset.targets)) + ' examples')
+
+                acc, t_time = train(model, train_dataset, criterion, scheduler, optimizer, epoch, t, buffer, dataset,
+                    example_stats_train, train_indx, maskretrain=False, masks={}, cl_mask=cl_mask, ncm_classifier=ncm_classifier)
+                
+                train_time.update(t_time)
+
+                prune_print_sparsity(model)
+                if args.gradient_efficient or args.gradient_efficient_mix:
+                    show_mask_sparsity()
+
+                if epoch % args.test_epoch_interval == 0 or epoch == (int(args.epochs/dataset.N_TASKS)-1):
+                    acc_list, til_acc_list, inference_time = evaluate(model, dataset, ncm_classifier=ncm_classifier)
+                    inf_time.update(inference_time)
+
+                    prec1 = sum(acc_list) / (t+1)
+                    til_prec1 = sum(til_acc_list) / (t+1)
+                    acc_matrix[t] = acc_list
+                    forgetting = np.mean((np.max(acc_matrix, axis=0) - acc_list)[:t]) if t > 0 else 0.0
+                    learning_acc = np.mean(np.diag(acc_matrix)[:t+1])
+                    
+                    lr = optimizer.param_groups[0]['lr']
+                    log_line = 'Training on ' + str(len(train_dataset.targets)) + ' examples\n'
+                    log_line += f"Task: {t}, Epoch:{epoch}, Average Acc:[{prec1:.3f}], , Task Inc Acc:[{til_prec1:.3f}], Learning Acc:[{learning_acc:.3f}], Forgetting:[{forgetting:.3f}], LR:{lr}\n"
+                    log_line += "\t"
+                    for i in range(t+1):
+                        log_line += f"Acc@T{i}: {acc_list[i]:.3f}\t"
+                    log_line += "\n"
+                    log_line += "\t"
+                    for i in range(t+1):
+                        log_line += f"Til-Acc@T{i}: {til_acc_list[i]:.3f}\t"
+                    log_line += "\n"
+                    print(log_line)
+                    with open(log_filename, 'a') as f:
+                        f.write(log_line)
+                        f.write("\n")
+                    
+                    if args.evaluate_mode and args.eval_checkpoint is not None:
+                        break
+
+            # save model checkpoint after every task
+            filename = "./{}seed{}_{}_{}{}_{}_acc_{:.3f}_fgt_{:.3f}_{}_lr{}_{}_sp{:.3f}_task_{}.pt".format(args.save_model,
+                                                                                                seed, args.remark,
+                                                                                                args.arch,
+                                                                                                args.depth,
+                                                                                                args.dataset,
+                                                                                                prec1,
+                                                                                                forgetting,
+                                                                                                args.optmzr, args.lr,
+                                                                                                args.lr_scheduler,
+                                                                                                total_sparsity,
+                                                                                                t)
+            torch.save(model.state_dict(), filename)
+
+            train_acc[t][n_iter] = acc.avg
+            test_acc[t][n_iter] = prec1
+    
     for t in range(dataset.N_TASKS):
-        # do it per task
-        example_stats_train = {}  
+        # train
+        avg_train_acc = np.mean(train_acc[t])
+        std_train_acc = np.std(train_acc[t])
+        # test
+        avg_test_acc = np.mean(test_acc[t])
+        std_test_acc = np.std(test_acc[t])
 
-        optimizer_init_lr = args.warmup_lr if args.warmup else args.lr
+        # Train Accuracy
+        wandb.log({"Task" + str(t) + " Train Acc": avg_train_acc})
+        print("Task {0} Train Acc: {1:.4f}±{2:.2f}".format(t, avg_train_acc, std_train_acc))
+        # Test Accuracy
+        wandb.log({"Task" + str(t) + " Test Acc": avg_test_acc})
+        print("Task {0} Test Acc: {1:.4f}±{2:.2f}".format(t, avg_test_acc, std_test_acc))
 
-        optimizer = None
-        if (args.optmzr == 'sgd'):
-            # optimizer = torch.optim.SGD(model.parameters(), optimizer_init_lr, momentum=0.9, weight_decay=1e-4)
-            optimizer = torch.optim.SGD(model.parameters(), optimizer_init_lr) # CL no momentum and wd
-        elif (args.optmzr == 'adam'):
-            optimizer = torch.optim.Adam(model.parameters(), optimizer_init_lr)
-
-        scheduler = None
-
-        # initialize training dataset and full dataset here
-        _, _, train_dataset, _ = dataset.get_data_loaders(return_dataset=True)
-        full_dataset = copy.deepcopy(train_dataset)
-
-        if args.sorting_file == None:
-            train_indx = np.array(range(len(full_dataset.targets)))
-        else:
-            try:
-                with open(
-                        os.path.join(args.input_dir, args.sorting_file) + '.pkl',
-                        'rb') as fin:
-                    ordered_indx = pickle.load(fin)['indices']
-            except IOError:
-                with open(os.path.join(args.input_dir, args.sorting_file),
-                          'rb') as fin:
-                    ordered_indx = pickle.load(fin)['indices']
-
-            # Get the indices to remove from training
-            elements_to_remove = np.array(ordered_indx)[-1:-1 + args.remove_n]
-            print('elements_to_remove', len(elements_to_remove))
-
-            # Remove the corresponding elements
-            train_indx = np.setdiff1d(range(len(train_dataset.targets)), elements_to_remove)
-            print('train_indx', len(train_indx))
-
-        # Reassign train data and labels and save the removed data
-        train_dataset.data = full_dataset.data[train_indx, :, :, :]
-        print(train_dataset.data.shape)  # (35000, 32, 32, 3)
-
-        train_dataset.targets = np.array(full_dataset.targets)[train_indx].tolist()
-        print('len(train_dataset.targets)', len(train_dataset.targets))
-
-
-        if args.use_cl_mask:
-            cur_classes = np.arange(t*dataset.N_CLASSES_PER_TASK, (t+1)*dataset.N_CLASSES_PER_TASK)
-            cl_mask = np.setdiff1d(np.arange(dataset.TOTAL_CLASSES), cur_classes)
-        else:
-            cl_mask = None
-
-        for epoch in range(int(args.epochs/dataset.N_TASKS)):
-            prune_update(epoch)
-            optimizer.zero_grad()
-            
-            #########remove data at 25 epoch, update dataset ######
-            if epoch > 0 and epoch % args.sp_mask_update_freq == 0 and epoch <= args.remove_data_epoch:
-                if args.sorting_file == None:
-                    print('epoch', epoch)
-
-                    unlearned_per_presentation_all, first_learned_all = [], []
-
-                    _, unlearned_per_presentation, _, first_learned = compute_forgetting_statistics(example_stats_train, int(args.epochs/dataset.N_TASKS))
-                    print('unlearned_per_presentation', len(unlearned_per_presentation))
-                    print('first_learned', len(first_learned))
-
-                    unlearned_per_presentation_all.append(unlearned_per_presentation)
-                    first_learned_all.append(first_learned)
-
-                    print('unlearned_per_presentation_all', len(unlearned_per_presentation_all))
-                    print('first_learned_all', len(first_learned_all))
-
-                    # print('epoch before sort ordered_examples len',len(ordered_examples))
-
-                    # Sort examples by forgetting counts in ascending order, over one or more training runs
-                    ordered_examples, ordered_values, num_unforget = sort_examples_by_forgetting(unlearned_per_presentation_all, first_learned_all, int(args.epochs/dataset.N_TASKS))
-
-                    # Save sorted output
-                    if args.output_name.endswith('.pkl'):
-                        with open(os.path.join(args.output_dir, args.output_name + "_task_"+ str(t) + "_unforget_"+str(num_unforget)),
-                                'wb') as fout:
-                            pickle.dump({
-                                'indices': ordered_examples,
-                                'forgetting counts': ordered_values
-                            }, fout)
-                    else:
-                        with open(
-                                os.path.join(args.output_dir, args.output_name + "_task_"+ str(t) + "_unforget_"+str(num_unforget) + '.pkl'),
-                                'wb') as fout:
-                            pickle.dump({
-                                'indices': ordered_examples,
-                                'forgetting counts': ordered_values
-                            }, fout)
-
-                    # Get the indices to remove from training
-                    print('epoch before ordered_examples len', len(ordered_examples))
-                    print('epoch before len(train_dataset.targets)', len(train_dataset.targets))
-                    elements_to_remove = np.array(
-                        ordered_examples)[args.keep_lowest_n:args.keep_lowest_n + ( int(args.remove_n/( int(args.remove_data_epoch)/args.sp_mask_update_freq ) ) )]
-                    # Remove the corresponding elements
-                    print('elements_to_remove', len(elements_to_remove))
-
-                    train_indx = np.setdiff1d(
-                        # range(len(train_dataset.targets)), elements_to_remove)
-                        train_indx, elements_to_remove)
-                    print('removed train_indx', len(train_indx))
-
-                    # Reassign train data and labels
-                    train_dataset.data = full_dataset.data[train_indx, :, :, :]
-                    train_dataset.targets = np.array(
-                        full_dataset.targets)[train_indx].tolist()
-
-                    print('shape', train_dataset.data.shape)
-                    print('len(train_dataset.targets)', len(train_dataset.targets))
-
-                    # print('epoch after random ordered_examples len', len(ordered_examples))
-                    #####empty example_stats_train!!! Because in original, forget process come before the whole training process
-                    example_stats_train = {}
-
-                ##########
-
-            print('Training on ' + str(len(train_dataset.targets)) + ' examples')
-
-            train(model, train_dataset, criterion, scheduler, optimizer, epoch, t, buffer, dataset,
-                example_stats_train, train_indx, maskretrain=False, masks={}, cl_mask=cl_mask)
-
-            prune_print_sparsity(model)
-            if args.gradient_efficient or args.gradient_efficient_mix:
-                show_mask_sparsity()
-
-            if epoch % args.test_epoch_interval == 0 or epoch == (int(args.epochs/dataset.N_TASKS)-1):
-                acc_list, til_acc_list = evaluate(model, dataset)
-                prec1 = sum(acc_list) / (t+1)
-                til_prec1 = sum(til_acc_list) / (t+1)
-                acc_matrix[t] = acc_list
-                forgetting = np.mean((np.max(acc_matrix, axis=0) - acc_list)[:t]) if t > 0 else 0.0
-                learning_acc = np.mean(np.diag(acc_matrix)[:t+1])
-
-                
-                lr = optimizer.param_groups[0]['lr']
-                log_line = 'Training on ' + str(len(train_dataset.targets)) + ' examples\n'
-                log_line += f"Task: {t}, Epoch:{epoch}, Average Acc:[{prec1:.3f}], , Task Inc Acc:[{til_prec1:.3f}], Learning Acc:[{learning_acc:.3f}], Forgetting:[{forgetting:.3f}], LR:{lr}\n"
-                log_line += "\t"
-                for i in range(t+1):
-                    log_line += f"Acc@T{i}: {acc_list[i]:.3f}\t"
-                log_line += "\n"
-                log_line += "\t"
-                for i in range(t+1):
-                    log_line += f"Til-Acc@T{i}: {til_acc_list[i]:.3f}\t"
-                log_line += "\n"
-                print(log_line)
-                with open(log_filename, 'a') as f:
-                    f.write(log_line)
-                    f.write("\n")
-                
-                if args.evaluate_mode and args.eval_checkpoint is not None:
-                    break
-
-        # save model checkpoint after every task
-        filename = "./{}seed{}_{}_{}{}_{}_acc_{:.3f}_fgt_{:.3f}_{}_lr{}_{}_sp{:.3f}_task_{}.pt".format(args.save_model,
-                                                                                            seed, args.remark,
-                                                                                            args.arch,
-                                                                                            args.depth,
-                                                                                            args.dataset,
-                                                                                            prec1,
-                                                                                            forgetting,
-                                                                                            args.optmzr, args.lr,
-                                                                                            args.lr_scheduler,
-                                                                                            total_sparsity,
-                                                                                            t)
-        torch.save(model.state_dict(), filename)
-
+    wandb.log({"Training Time": wandb.plot.bar(train_time.avg)})
+    wandb.log({"Inference Time": wandb.plot.bar(inf_time.avg)})
 
 if __name__ == '__main__':
     main()

@@ -105,7 +105,9 @@ def store_masked_loaders(train_dataset: datasets, test_dataset: datasets,
     """
     train_mask = np.logical_and(np.array(train_dataset.targets) >= setting.i,
         np.array(train_dataset.targets) < setting.i + setting.N_CLASSES_PER_TASK)
-    test_mask = np.logical_and(np.array(test_dataset.targets) >= setting.i,
+    # test_mask = np.logical_and(np.array(test_dataset.targets) >= setting.i,
+    #     np.array(test_dataset.targets) < setting.i + setting.N_CLASSES_PER_TASK)
+    test_mask = np.logical_and(np.array(test_dataset.targets) >= 0,
         np.array(test_dataset.targets) < setting.i + setting.N_CLASSES_PER_TASK)
 
     train_dataset.data = train_dataset.data[train_mask]

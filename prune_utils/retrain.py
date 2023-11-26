@@ -84,7 +84,7 @@ class SparseTraining(object):
                 self.masked_layers[utils_pr.canonical_name(name)] = None
 
 
-        if "fixed_layers" in self.configs:
+        if "fixed_layers" in self.configs:  # False
             self.fixed_layers = self.configs['fixed_layers']
         else:
             self.fixed_layers = None
@@ -159,6 +159,7 @@ class SparseTraining(object):
             for name, W in (self.model.named_parameters()):
                 if name in self.masks:
                     dtype = W.dtype
+                    # if W.grad is not None:
                     (W.grad).mul_((self.masks[name] != 0).type(dtype))
             
             for name, W in (self.model.named_parameters()):
@@ -166,8 +167,7 @@ class SparseTraining(object):
                     continue
                 # cuda_pruned_weights = None
                 percent = self.args.gradient_sparse * 100
-                weight_temp = np.abs(W.grad.cpu().detach().numpy(
-                ))  # a buffer that holds weights with absolute values
+                weight_temp = np.abs(W.grad.cpu().detach().numpy())  # a buffer that holds weights with absolute values
                 percentile = np.percentile(
                     weight_temp,
                     percent)  # get a value for this percentitle
@@ -176,7 +176,8 @@ class SparseTraining(object):
                 above_threshold = above_threshold.astype(
                     np.float32
                 )  # has to convert bool to float32 for numpy-tensor conversion
-                W.grad[under_threshold] = 0
+                if under_threshold.ndim != 2:
+                    W.grad[under_threshold] = 0
 
                 # gradient = W.grad.data
                 # above_threshold, cuda_pruned_gradient = admm.weight_pruning(args, name, gradient, args.gradient_sparse)  # get sparse model in cuda

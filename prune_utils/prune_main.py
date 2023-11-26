@@ -38,8 +38,8 @@ def prune_parse_arguments(parser):
 def prune_init(args, model, logger=None, pre_defined_mask=None):
     global prune_algo, retrain
 
-    if args.sp_retrain:
-        if args.sp_prune_before_retrain:
+    if args.sp_retrain: # True
+        if args.sp_prune_before_retrain: # True
             prune_harden(args, model)
 
         prune_algo = None
@@ -52,6 +52,9 @@ def prune_update(epoch=0, batch_idx=0):
 
 
 def prune_harden(args, model, option=None):
+    '''
+    sp_config_file = yaml file containing the model sparse weight ratio for each layer.
+    '''
     configs, prune_ratios = load_configs(model, args.sp_config_file, logger=None)
 
     # if args.sp_global_weight_sparsity > 0:
