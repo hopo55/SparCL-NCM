@@ -155,12 +155,19 @@ class NCM(nn.Module):
 
     def update_class_centers(self, features, labels):
         for feature, label in zip(features, labels):
-            self.class_means.data[label] += feature
+            self.class_means.data[label] += (feature - self.class_means.data[label]) / (self.cK.data[label] + 1)
             self.cK.data[label] += 1
 
-        for i in range(self.num_classes):
-            if self.cK[i] > 0:
-                self.class_means.data[i] /= self.cK[i]
+            # self.class_means.data[label] += feature
+            # self.cK.data[label] += 1
+
+        # target = torch.unique(labels)
+        # for i in target:
+        #     self.class_means.data[i] /= self.cK[i]
+
+        # for i in range(self.num_classes):
+        #     if self.cK[i] > 0:
+        #         self.class_means.data[i] /= self.cK[i]
 
     def classification(sefl, distances):
         # exp_neg_distances = torch.exp(distances)
@@ -170,7 +177,7 @@ class NCM(nn.Module):
         return outputs
 
     def reset_class_means(self, labels):
-        self.class_means.data[labels] = 0
+        # self.class_means.data[labels] = 0
         self.cK.data[labels] = 0
 
 def resnet18(dataset: str, nf: int=64) -> ResNet:

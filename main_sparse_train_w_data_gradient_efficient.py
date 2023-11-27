@@ -39,6 +39,14 @@ import torchvision.transforms as transforms
 # Logging
 import wandb
 
+# FLOPs
+from torchstat import stat
+from thop import profile    # x
+from ptflops import get_model_complexity_info   # x
+from pthflops import count_ops  # x
+from fvcore.nn import FlopCountAnalysis
+from utils.flops import calculate_flops
+
 # Training settings
 parser = argparse.ArgumentParser(description='PyTorch CIFAR training')
 parser.add_argument('--arch', type=str, default=None,
@@ -166,7 +174,7 @@ parser.add_argument('--ncm', action='store_true', default=False, help='using NCM
 prune_parse_arguments(parser)
 args = parser.parse_args()
 
-log_name = args.arch + str(args.depth)
+log_name = args.dataset + '-' + args.replay_method
 if args.ncm: log_name += '-ncm'
 
 wandb.login()
@@ -278,6 +286,10 @@ def train(model, trainset, criterion, scheduler, optimizer, epoch, t, buffer, da
     batch_size = args.batch_size
     end = time.time()
 
+    if ncm_classifier is not None:
+        unique_target = np.unique(trainset.targets)
+        ncm_classifier.reset_class_means(unique_target)
+
     for batch_idx, batch_start_ind in enumerate(range(0, len(trainset.targets), batch_size)):
         data_time.update(time.time() - end)
 
@@ -312,7 +324,8 @@ def train(model, trainset, criterion, scheduler, optimizer, epoch, t, buffer, da
             if args.replay_method == "er":
                 buf_inputs, buf_labels = buffer.get_data(
                     args.batch_size, transform=dataset.get_transform())
-                if not args.merge_batch or (t == 0):
+                # if not args.merge_batch or (t == 0):
+                if (t == 0):
                     # compute output
                     if args.ncm:
                         outputs = model(inputs, returnt='features')
@@ -387,6 +400,7 @@ def train(model, trainset, criterion, scheduler, optimizer, epoch, t, buffer, da
                     else:
                         buf_output = model(buf_inputs)
                     buf_mse_loss = F.mse_loss(buf_output, buf_logits, reduction="none")
+                    # buf_mse_loss = F.mse_loss(buf_output, buf_logits)   # modified
                     buf_mse_loss = torch.mean(buf_mse_loss, axis=-1)
                     # ce_loss = ce_loss.mean()
                     # buf_mse_loss = buf_mse_loss.mean()
@@ -403,6 +417,7 @@ def train(model, trainset, criterion, scheduler, optimizer, epoch, t, buffer, da
                         buf_output = model(buf_inputs)
                     # print(buf_inputs.shape)
                     buf_mse_loss = F.mse_loss(buf_output, buf_logits, reduction="none")
+                    # buf_mse_loss = F.mse_loss(buf_output, buf_logits) # modified
                     buf_mse_loss = torch.mean(buf_mse_loss, axis=-1)
                     # print(ce_loss.shape, buf_mse_loss.shape)
                     
@@ -598,6 +613,7 @@ def mask_classes(outputs, dataset, k):
             
 
 def test(model, dataset, ncm_classifier=None):
+    start = time.time()
     model.eval()
     acc_list = np.zeros((dataset.N_TASKS, ))
     til_acc_list = np.zeros((dataset.N_TASKS, ))
@@ -637,7 +653,9 @@ def test(model, dataset, ncm_classifier=None):
             til_acc_list[task] = til_acc
             print(f"Task {task}, Average loss {test_loss:.4f}, Class inc Accuracy {acc:.3f}, Task inc Accuracy {til_acc:.3f}")
 
-    return acc_list, til_acc_list
+    inf_time = time.time() - start    # all dataset training time
+
+    return acc_list, til_acc_list, inf_time
 
 
 def evaluate(model, dataset, last=False, ncm_classifier=None):
@@ -803,11 +821,18 @@ def main():
             else:
                 sys.exit("vgg doesn't have those depth!")
         elif args.arch == "resnet":
+            if args.dataset == 'seq-cifar10':
+                nclasses = 10
+            elif args.dataset == 'seq-cifar100':
+                nclasses = 100
+            elif args.dataset == 'seq-tinyimg':
+                nclasses = 200
+
             if args.depth == 18:
                 model = resnet18(dataset=args.dataset)  # resnet-18
                 if args.ncm:
                     model.classifier = nn.Identity()
-                    ncm_classifier = NCM(num_classes=10)
+                    ncm_classifier = NCM(num_classes=nclasses)
                 else:
                     ncm_classifier = None
             elif args.depth == 20:
@@ -912,7 +937,6 @@ def main():
         # torch.backends.cudnn.deterministic = True
         # torch.backends.cudnn.benchmark = False
         print("Using manual seed:", seed)
-
 
         for t in range(dataset.N_TASKS):
             # do it per task
@@ -1047,17 +1071,33 @@ def main():
                 else:
                     print('Training on ' + str(len(train_dataset.targets)) + ' examples')
 
+
+
                 acc, t_time = train(model, train_dataset, criterion, scheduler, optimizer, epoch, t, buffer, dataset,
                     example_stats_train, train_indx, maskretrain=False, masks={}, cl_mask=cl_mask, ncm_classifier=ncm_classifier)
                 
-                train_time.update(t_time)
+                if epoch > 0: train_time.update(t_time)
 
                 prune_print_sparsity(model)
+
+                # print('*'*8)
+                # print('*'*8)
+                # print('*'*8)
+                # # rand_input = torch.randn(1, 3, 32, 32).cuda()
+                # input_shape = (1, 3, 32, 32)
+                # model_flops = calculate_flops(model, input_shape)
+                # print(f"Estimated FLOPs: {model_flops}")
+                # print('*'*8)
+                # print('*'*8)
+                # print('*'*8)
+
                 if args.gradient_efficient or args.gradient_efficient_mix:
                     show_mask_sparsity()
 
                 if epoch % args.test_epoch_interval == 0 or epoch == (int(args.epochs/dataset.N_TASKS)-1):
                     acc_list, til_acc_list, inference_time = evaluate(model, dataset, ncm_classifier=ncm_classifier)
+                    # acc_list, til_acc_list, inference_time = test(model, dataset, ncm_classifier=ncm_classifier)
+                    
                     inf_time.update(inference_time)
 
                     prec1 = sum(acc_list) / (t+1)
@@ -1065,6 +1105,8 @@ def main():
                     acc_matrix[t] = acc_list
                     forgetting = np.mean((np.max(acc_matrix, axis=0) - acc_list)[:t]) if t > 0 else 0.0
                     learning_acc = np.mean(np.diag(acc_matrix)[:t+1])
+
+                    
                     
                     lr = optimizer.param_groups[0]['lr']
                     log_line = 'Training on ' + str(len(train_dataset.targets)) + ' examples\n'
@@ -1099,8 +1141,17 @@ def main():
                                                                                                 t)
             torch.save(model.state_dict(), filename)
 
+            # Test
+            acc_list, til_acc_list, inference_time = test(model, dataset, ncm_classifier=ncm_classifier)
+            prec1 =acc_list[t]
+
             train_acc[t][n_iter] = acc.avg
+            # test_acc[t][n_iter] = prec1
             test_acc[t][n_iter] = prec1
+
+            for n in range(t):
+                wandb.log({"Task" + str(n) + "Test Acc": acc_list[n]})
+
     
     for t in range(dataset.N_TASKS):
         # train
@@ -1111,14 +1162,14 @@ def main():
         std_test_acc = np.std(test_acc[t])
 
         # Train Accuracy
-        wandb.log({"Task" + str(t) + " Train Acc": avg_train_acc})
+        wandb.log({"Task Train Acc": avg_train_acc})
         print("Task {0} Train Acc: {1:.4f}±{2:.2f}".format(t, avg_train_acc, std_train_acc))
         # Test Accuracy
-        wandb.log({"Task" + str(t) + " Test Acc": avg_test_acc})
+        wandb.log({"Task Test Acc": avg_test_acc})
         print("Task {0} Test Acc: {1:.4f}±{2:.2f}".format(t, avg_test_acc, std_test_acc))
 
-    wandb.log({"Training Time": wandb.plot.bar(train_time.avg)})
-    wandb.log({"Inference Time": wandb.plot.bar(inf_time.avg)})
+    wandb.log({"Training Time": train_time.avg})
+    wandb.log({"Inference Time": inf_time.avg})
 
 if __name__ == '__main__':
     main()

@@ -297,8 +297,3 @@ def prune_print_sparsity(model=None, logger=None, show_sparse_only=False, compre
         total_num = non_zeros.size
         sparsity = 1 - (num_nonzeros * 1.0) / total_num
         print("{}: {}, {}, {}, [{}]".format(name, str(num_nonzeros), str(total_num), non_zeros.shape, str(sparsity)))
-
-
-
-
-

@@ -209,7 +209,10 @@ class SparseTraining(object):
 
             layer_cont += 1
 
-        comp_ratio = float((total_zeros + total_nonzeros)) / float(total_nonzeros)
+        if total_nonzeros > 0: 
+            comp_ratio = float((total_zeros + total_nonzeros)) / float(total_nonzeros)
+        else: 
+            comp_ratio = 0
         total_sparsity = total_zeros / (total_zeros + total_nonzeros)
 
         print("---------------------------------------------------------------------------")
