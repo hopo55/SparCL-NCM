@@ -11,7 +11,7 @@ EPOCHS="250"
 WARMUP="8"
 
 SPARSITY_TYPE="irregular"
-DATASET="seq-cifar10"
+DATASET="seq-tinyimg"
 
 GLOBAL_BATCH_SIZE="32"
 MASK_UPDATE_DECAY_EPOCH="5-45"
@@ -29,7 +29,7 @@ cd $PATH_TO_SPARCL
 
 mkdir -p ${SAVE_FOLDER}
 
-GPU_ID=0
+GPU_ID=1
 SEED=0
 
 GRADIENT=0.80
@@ -49,5 +49,4 @@ CUDA_VISIBLE_DEVICES=${GPU_ID} python3 -u main_sparse_train_w_data_gradient_effi
         --arch ${ARCH} --depth ${DEPTH} --optmzr sgd --batch-size ${GLOBAL_BATCH_SIZE} --lr ${INIT_LR} --lr-scheduler cosine --save-model ${SAVE_FOLDER} --epochs ${EPOCHS} --dataset ${DATASET} --seed ${SEED} --upper-bound ${UPPER_BOUND} --lower-bound ${LOWER_BOUND} --mask-update-decay-epoch ${MASK_UPDATE_DECAY_EPOCH} --sp-mask-update-freq ${SP_MASK_UPDATE_FREQ} --remark ${REMARK} ${PRUNE_ARGS} --sp-admm-sparsity-type=${SPARSITY_TYPE} --sp-config-file=${CONFIG_FILE} \
         --log-filename=${SAVE_FOLDER}/seed_${SEED}_${LOG_NAME}.txt --buffer-size=$BUFFER_SIZE --replay_method derpp --buffer_weight 0.1 --buffer_weight_beta 0.5 \
         --use_cl_mask --gradient_efficient_mix --gradient_sparse=$GRADIENT --remove-n=$REMOVE_N --keep-lowest-n 0 --remove-data-epoch=$RM_EPOCH --output-dir ${SAVE_FOLDER} --output-name=${PKL_NAME} --iter $ITER\
-        # --ncm
         # --evaluate_mode --eval_checkpoint=${EVAL_CHECKPOINT} 

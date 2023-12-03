@@ -125,7 +125,8 @@ class ResNet(nn.Module):
         out = self.layer2(out)  # -> 128, 16, 16
         out = self.layer3(out)  # -> 256, 8, 8
         out = self.layer4(out)  # -> 512, 4, 4
-        out = avg_pool2d(out, out.shape[2]) # -> 512, 1, 1
+        # out = avg_pool2d(out, out.shape[2]) # -> 512, 1, 1
+        out = avg_pool2d(out, (out.shape[2], out.shape[3])) # -> 512, 1, 1
         feature = out.view(out.size(0), -1)  # 512
 
         if returnt == 'features':
@@ -150,10 +151,16 @@ class NCM(nn.Module):
         self.cK = torch.zeros(num_classes).cuda()
 
     def forward(self, x):
-        distances = torch.cdist(x, self.class_means)
+        normalized_features = F.normalize(x, p=2, dim=1)
+        normalized_class_means = F.normalize(self.class_means, p=2, dim=1)
+        distances = torch.cdist(normalized_features, normalized_class_means)
+
+        # distances = torch.cdist(x, self.class_means)
         return -distances
 
     def update_class_centers(self, features, labels):
+        features = F.normalize(features, p=2, dim=1)
+
         for feature, label in zip(features, labels):
             self.class_means.data[label] += (feature - self.class_means.data[label]) / (self.cK.data[label] + 1)
             self.cK.data[label] += 1
@@ -172,9 +179,10 @@ class NCM(nn.Module):
     def classification(sefl, distances):
         # exp_neg_distances = torch.exp(distances)
         # outputs = F.softmax(exp_neg_distances, dim=1)
-        outputs = F.softmax(distances, dim=1)
+        # outputs = F.softmax(distances, dim=1)
 
-        return outputs
+        # return outputs
+        return distances
 
     def reset_class_means(self, labels):
         # self.class_means.data[labels] = 0

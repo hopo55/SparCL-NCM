@@ -6,6 +6,7 @@
 from datasets.seq_mnist import SequentialMNIST
 from datasets.seq_cifar10 import SequentialCIFAR10
 from datasets.seq_cifar100 import SequentialCIFAR100
+from datasets.seq_tinyimg import SequentialTinyImagenet
 from datasets.utils.continual_dataset import ContinualDataset
 from argparse import Namespace
 
@@ -13,6 +14,7 @@ NAMES = {
     SequentialMNIST.NAME: SequentialMNIST,
     SequentialCIFAR10.NAME: SequentialCIFAR10,
     SequentialCIFAR100.NAME: SequentialCIFAR100,
+    SequentialTinyImagenet.NAME: SequentialTinyImagenet,
 }
 
 

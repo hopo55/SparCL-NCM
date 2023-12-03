@@ -44,7 +44,7 @@ from torchstat import stat
 from thop import profile    # x
 from ptflops import get_model_complexity_info   # x
 from pthflops import count_ops  # x
-from fvcore.nn import FlopCountAnalysis
+from fvcore.nn import FlopCountAnalysis, flop_count_table
 from utils.flops import calculate_flops
 
 # Training settings
@@ -919,6 +919,16 @@ def main():
     train_time = AverageMeter()
     inf_time = AverageMeter()
 
+    print('*'*8)
+    print('*'*8)
+    print('*'*8)
+    input_shape = torch.randn(1, 3, 32, 32).cuda()
+    model_flops = FlopCountAnalysis(model, input_shape)
+    print(model_flops.total())
+    print('*'*8)
+    print('*'*8)
+    print('*'*8)
+
     for n_iter in range(args.iter):
         if args.rand_seed:
             seed = random.randint(1, 999)
@@ -1071,25 +1081,12 @@ def main():
                 else:
                     print('Training on ' + str(len(train_dataset.targets)) + ' examples')
 
-
-
                 acc, t_time = train(model, train_dataset, criterion, scheduler, optimizer, epoch, t, buffer, dataset,
                     example_stats_train, train_indx, maskretrain=False, masks={}, cl_mask=cl_mask, ncm_classifier=ncm_classifier)
                 
                 if epoch > 0: train_time.update(t_time)
 
                 prune_print_sparsity(model)
-
-                # print('*'*8)
-                # print('*'*8)
-                # print('*'*8)
-                # # rand_input = torch.randn(1, 3, 32, 32).cuda()
-                # input_shape = (1, 3, 32, 32)
-                # model_flops = calculate_flops(model, input_shape)
-                # print(f"Estimated FLOPs: {model_flops}")
-                # print('*'*8)
-                # print('*'*8)
-                # print('*'*8)
 
                 if args.gradient_efficient or args.gradient_efficient_mix:
                     show_mask_sparsity()
