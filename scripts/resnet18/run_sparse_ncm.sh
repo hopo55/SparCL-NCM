@@ -7,20 +7,22 @@ DEPTH="18"
 PRUNE_ARGS="--sp-retrain --sp-prune-before-retrain"
 LOAD_CKPT="XXXXX.pth.tar"     # automatically train from scratch if the given checkpoint model is not found
 INIT_LR="0.03"
-EPOCHS="250"
+# EPOCHS="250"
+EPOCHS="50"
 WARMUP="8"
 
 SPARSITY_TYPE="irregular"
 DATASET="seq-cifar10"
 
-GLOBAL_BATCH_SIZE="32"
+# GLOBAL_BATCH_SIZE="32"
+GLOBAL_BATCH_SIZE="256"
 MASK_UPDATE_DECAY_EPOCH="5-45"
-SP_MASK_UPDATE_FREQ="5"
+SP_MASK_UPDATE_FREQ="5" # ???
 
-REMOVE_N=3000
-RM_EPOCH=20
-# REMOVE_N=0
-# RM_EPOCH=-1
+# REMOVE_N=3000
+# RM_EPOCH=20
+REMOVE_N=0
+RM_EPOCH=-1
 
 ITER=1
 
@@ -31,21 +33,26 @@ cd $PATH_TO_SPARCL
 
 mkdir -p ${SAVE_FOLDER}
 
-GPU_ID=1
+GPU_ID=0
 SEED=0
 
-GRADIENT=0.80
-# GRADIENT=1
+# GRADIENT=0.80
+GRADIENT=1
 # ------- for 75% overall sparsity ----------
 # ------- check retrain.py for more information ----------
-LOWER_BOUND="0.75-0.76-0.75"
-UPPER_BOUND="0.74-0.75-0.75"
+# LOWER_BOUND="0.75-0.76-0.75"
+# UPPER_BOUND="0.74-0.75-0.75"
+LOWER_BOUND="0.25-0.25-0.25"
+UPPER_BOUND="0.25-0.25-0.25"
 
-CONFIG_FILE="./profiles/resnet18_cifar/irr/resnet18_0.75.yaml"
-# CONFIG_FILE="./profiles/resnet18_cifar/irr/resnet18_0.50.yaml"
-REMARK="irr_0.75_mut"
-LOG_NAME="75_derpp_${GRADIENT}"
-PKL_NAME="irr_0.75_mut_RM_${REMOVE_N}_${RM_EPOCH}"
+# CONFIG_FILE="./profiles/resnet18_cifar/irr/resnet18_0.75.yaml"
+CONFIG_FILE="./profiles/resnet18_cifar/irr/resnet18_0.25.yaml"
+# REMARK="irr_0.75_mut"
+REMARK="irr_0.25_mut"
+# LOG_NAME="75_derpp_${GRADIENT}"
+LOG_NAME="00_derpp_${GRADIENT}"
+# PKL_NAME="irr_0.75_mut_RM_${REMOVE_N}_${RM_EPOCH}"
+PKL_NAME="irr_0.25_mut_RM_${REMOVE_N}_${RM_EPOCH}"
 # EVAL_CHECKPOINT="./checkpoints/resnet18/mutate_irr/seed914_irr_0.75_mut_resnet18_seq-cifar10_acc_57.110_fgt_43.500_sgd_lr0.1_cosine_sp0.000_task_4.pt"
 
 

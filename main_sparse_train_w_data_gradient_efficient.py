@@ -42,8 +42,8 @@ import wandb
 # FLOPs
 from torchstat import stat
 from thop import profile    # x
-from ptflops import get_model_complexity_info   # x
-from pthflops import count_ops  # x
+# from ptflops import get_model_complexity_info   # x
+# from pthflops import count_ops  # x
 from fvcore.nn import FlopCountAnalysis, flop_count_table
 from utils.flops import calculate_flops
 
