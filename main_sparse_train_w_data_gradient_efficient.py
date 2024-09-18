@@ -53,8 +53,6 @@ parser.add_argument('--arch', type=str, default=None,
                     help='[vgg, resnet, convnet, alexnet]')
 parser.add_argument('--depth', default=None, type=int,
                     help='depth of the neural network, 16,19 for vgg; 18, 50 for resnet')
-# parser.add_argument('--dataset', type=str, default="cifar10",
-#                     help='[cifar10, cifar100]')
 parser.add_argument('-j', '--workers', default=4, type=int, metavar='N',
                     help='number of data loading workers (default: 4)')
 parser.add_argument('--multi-gpu', action='store_true', default=False,
@@ -127,7 +125,7 @@ parser.add_argument('--buffer-size', type=int, default=500, metavar='N',
 parser.add_argument('--buffer_weight', type=float, default=1.0, help="weight of ce loss of buffered samples")
 parser.add_argument('--buffer_weight_beta', type=float, default=1.0, help="weight of ce loss of buffered samples in DERPP")
 parser.add_argument('--dataset', type=str, default="seq-cifar10",
-                    help='[seq-cifar10, seq-cifar100]')
+                    help='[seq-cifar10, seq-cifar100, "seq-tinyimg]')
 parser.add_argument('--validation', action='store_true', default=False,
                     help='CL validation T of F')    
 parser.add_argument('--test_epoch_interval', type=int, default=1, metavar='how often we do test',
@@ -170,15 +168,17 @@ parser.add_argument('--input-dir', type=str, default=".", help='input dir for so
 # ------- NCM setup ----------
 parser.add_argument('--ncm', action='store_true', default=False, help='using NCM classifier')
 
+parser.add_argument('--device', type=str, default="PC", help='[PC, Jetson Nano, Odroid, Raspberry Pi]')
+parser.add_argument('--sparse_ratio', type=float, default=0.75, help='sparse ratio')
 
 prune_parse_arguments(parser)
 args = parser.parse_args()
 
-log_name = args.dataset + '-' + args.replay_method
-if args.ncm: log_name += '-ncm'
+log_name = args.dataset + '-' + args.device + '-' + args.replay_method + "-" + str(args.sparse_ratio)
+# if args.ncm: log_name += '-ncm'
 
 wandb.login()
-wandb.init(config=args, project='SparseCL', name=log_name)
+wandb.init(config=args, project='[IEEE Access] SparCL', name=log_name)
 
 args.cuda = not args.no_cuda and torch.cuda.is_available()
 
@@ -919,15 +919,15 @@ def main():
     train_time = AverageMeter()
     inf_time = AverageMeter()
 
-    print('*'*8)
-    print('*'*8)
-    print('*'*8)
-    input_shape = torch.randn(1, 3, 32, 32).cuda()
-    model_flops = FlopCountAnalysis(model, input_shape)
-    print(model_flops.total())
-    print('*'*8)
-    print('*'*8)
-    print('*'*8)
+    # print('*'*8)
+    # print('*'*8)
+    # print('*'*8)
+    # input_shape = torch.randn(1, 3, 32, 32).cuda()
+    # model_flops = FlopCountAnalysis(model, input_shape)
+    # print(model_flops.total())
+    # print('*'*8)
+    # print('*'*8)
+    # print('*'*8)
 
     for n_iter in range(args.iter):
         if args.rand_seed:
