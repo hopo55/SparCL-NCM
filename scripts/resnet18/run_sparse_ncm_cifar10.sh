@@ -2,7 +2,7 @@
 METHOD="derpp"     # "er" or "derpp"
 DATASET="seq-cifar10"
 DEVICE="PC"
-BUFFER_SIZE=200
+BUFFER_SIZE=100
 SPARSE=0.25
 GLOBAL_BATCH_SIZE="64"
 GPU_ID=0
