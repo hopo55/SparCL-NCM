@@ -47,6 +47,10 @@ from thop import profile    # x
 from fvcore.nn import FlopCountAnalysis, flop_count_table
 from utils.flops import calculate_flops
 
+# set job name
+import setproctitle
+setproctitle.setproctitle('hs_park/access/sparcl')
+
 # Training settings
 parser = argparse.ArgumentParser(description='PyTorch CIFAR training')
 parser.add_argument('--arch', type=str, default=None,
@@ -272,6 +276,7 @@ def train(model, trainset, criterion, scheduler, optimizer, epoch, t, buffer, da
     data_time = AverageMeter()
     losses = AverageMeter()
     top1 = AverageMeter()
+    training_time = AverageMeter()
 
     train_loss = 0.
     correct = 0.
@@ -317,6 +322,10 @@ def train(model, trainset, criterion, scheduler, optimizer, epoch, t, buffer, da
         if args.mixup:
             inputs, target_a, target_b, lam = mixup_data(inputs, targets, args.alpha)
 
+
+        # Training Time
+        torch.cuda.synchronize()
+        start_time = time.time()
 
         # Forward propagation, compute loss, get predictions
         # add buffer here
@@ -522,6 +531,11 @@ def train(model, trainset, criterion, scheduler, optimizer, epoch, t, buffer, da
         batch_time.update(time.time() - end)
         end = time.time()
 
+        torch.cuda.synchronize()
+        end_time = time.time()
+        inference_time = end_time - start_time
+        training_time.update(inference_time, n=inputs.size(0))
+
         # Add training accuracy to dict
         index_stats = example_stats_train.get('train', [[], []])
         index_stats[1].append(100. * correct.item() / float(total))
@@ -560,7 +574,7 @@ def train(model, trainset, criterion, scheduler, optimizer, epoch, t, buffer, da
 
     train_time = time.time() - start    # all dataset training time
 
-    return top1, train_time
+    return top1, training_time.avg
 
 
 class AverageMeter(object):
@@ -666,7 +680,6 @@ def evaluate(model, dataset, last=False, ncm_classifier=None):
     :return: a tuple of lists, containing the class-il
              and task-il accuracy for each task
     """
-    start = time.time()
     model.eval()
     accs = np.zeros((dataset.N_TASKS, ))
     accs_mask_classes = np.zeros((dataset.N_TASKS, ))
@@ -674,10 +687,17 @@ def evaluate(model, dataset, last=False, ncm_classifier=None):
         if last and k < len(dataset.test_loaders) - 1:
             continue
         correct, correct_mask_classes, total = 0.0, 0.0, 0.0
+        batch_time = AverageMeter()
+
         for data in test_loader:
             with torch.no_grad():
                 inputs, labels = data
                 inputs, labels = inputs.cuda(), labels.cuda()
+
+                # inference time
+                torch.cuda.synchronize()
+                start_time = time.time()
+
                 # if 'class-il' not in model.COMPATIBILITY:
                 #     outputs = model(inputs, k)
                 # else:
@@ -697,14 +717,18 @@ def evaluate(model, dataset, last=False, ncm_classifier=None):
                 _, pred = torch.max(outputs.data, 1)
                 correct_mask_classes += torch.sum(pred == labels).item()
 
+                # inference time
+                torch.cuda.synchronize()
+                end_time = time.time()
+                inference_time = end_time - start_time
+                batch_time.update(inference_time, n=inputs.size(0))
+
         # accs.append(correct / total * 100)
         accs[k] = correct / total * 100
         # accs_mask_classes.append(correct_mask_classes / total * 100)
         accs_mask_classes[k] = correct_mask_classes / total * 100
 
-    inf_time = time.time() - start    # all dataset training time
-
-    return accs, accs_mask_classes, inf_time
+    return accs, accs_mask_classes, batch_time.avg
 
 
 def compute_forgetting_statistics(diag_stats, npresentations):
@@ -936,7 +960,7 @@ def main():
         else:
             seed = args.seed
 
-        if n_iter > 0: seed += args.iter
+        # if n_iter > 0: seed += args.iter
 
         random.seed(seed)
         np.random.seed(seed)
@@ -1084,7 +1108,7 @@ def main():
                 acc, t_time = train(model, train_dataset, criterion, scheduler, optimizer, epoch, t, buffer, dataset,
                     example_stats_train, train_indx, maskretrain=False, masks={}, cl_mask=cl_mask, ncm_classifier=ncm_classifier)
                 
-                if epoch > 0: train_time.update(t_time)
+                train_time.update(t_time)
 
                 prune_print_sparsity(model)
 
@@ -1143,12 +1167,13 @@ def main():
             prec1 =acc_list[t]
 
             train_acc[t][n_iter] = acc.avg
-            # test_acc[t][n_iter] = prec1
             test_acc[t][n_iter] = prec1
 
             for n in range(t):
                 wandb.log({"Task" + str(n) + "Test Acc": acc_list[n]})
 
+    wandb.log({"Training Time": train_time.avg})    # sec
+    wandb.log({"Inference Time": inf_time.avg})     # sec
     
     for t in range(dataset.N_TASKS):
         # train
@@ -1165,8 +1190,6 @@ def main():
         wandb.log({"Task Test Acc": avg_test_acc})
         print("Task {0} Test Acc: {1:.4f}±{2:.2f}".format(t, avg_test_acc, std_test_acc))
 
-    wandb.log({"Training Time": train_time.avg})
-    wandb.log({"Inference Time": inf_time.avg})
 
 if __name__ == '__main__':
     main()
