@@ -2,9 +2,9 @@
 METHOD="derpp"     # "er" or "derpp"
 DATASET="seq-cifar10"
 DEVICE="PC"
-BUFFER_SIZE=100
+BUFFER_SIZE=500
 SPARSE=0.25
-GLOBAL_BATCH_SIZE="64"
+GLOBAL_BATCH_SIZE="32"
 GPU_ID=0
 PATH_TO_SPARCL=/home/cal-06/heonsung/SparCL-NCM # change to your own path
 
@@ -14,8 +14,7 @@ DEPTH="18"
 PRUNE_ARGS="--sp-retrain --sp-prune-before-retrain"
 LOAD_CKPT="XXXXX.pth.tar"     # automatically train from scratch if the given checkpoint model is not found
 INIT_LR="0.03"
-# EPOCHS="250"
-EPOCHS="5"
+EPOCHS="250"
 WARMUP="8"
 
 SPARSITY_TYPE="irregular"
