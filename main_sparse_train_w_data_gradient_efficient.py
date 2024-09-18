@@ -972,6 +972,8 @@ def main():
         # torch.backends.cudnn.benchmark = False
         print("Using manual seed:", seed)
 
+        prec1 = 0.
+
         for t in range(dataset.N_TASKS):
             # do it per task
             example_stats_train = {}  

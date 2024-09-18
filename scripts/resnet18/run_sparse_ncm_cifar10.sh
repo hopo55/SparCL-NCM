@@ -1,6 +1,5 @@
 # Hyperparameter Settings
-# METHOD="derpp"     # "er" or "derpp"
-METHOD="er"     # "er" or "derpp"
+METHOD="derpp"     # "er" or "derpp"
 DATASET="seq-cifar10"
 DEVICE="PC"
 BUFFER_SIZE=200
