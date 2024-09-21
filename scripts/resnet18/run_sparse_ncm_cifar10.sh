@@ -14,7 +14,7 @@ DEPTH="18"
 PRUNE_ARGS="--sp-retrain --sp-prune-before-retrain"
 LOAD_CKPT="XXXXX.pth.tar"     # automatically train from scratch if the given checkpoint model is not found
 INIT_LR="0.03"
-EPOCHS="50"
+EPOCHS="250"
 WARMUP="8"
 
 SPARSITY_TYPE="irregular"
