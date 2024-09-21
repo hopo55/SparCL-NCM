@@ -94,3 +94,4 @@ dmypy.json
 cython_debug/
 wandb
 *.pyc
+prune_utils/__pycache__
