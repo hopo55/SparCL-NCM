@@ -290,10 +290,10 @@ def prune_print_sparsity(model=None, logger=None, show_sparse_only=False, compre
         print("{}, {}, {}".format(total_w_num_nz, total_w_num, sparsity))
         return
 
-    print("The sparsity of all parameters: name, num_nonzeros, total_num, shape, sparsity")
+    # print("The sparsity of all parameters: name, num_nonzeros, total_num, shape, sparsity")
     for (name, W) in model.named_parameters():
         non_zeros = W.detach().cpu().numpy().astype(np.float32) != 0
         num_nonzeros = np.count_nonzero(non_zeros)
         total_num = non_zeros.size
         sparsity = 1 - (num_nonzeros * 1.0) / total_num
-        print("{}: {}, {}, {}, [{}]".format(name, str(num_nonzeros), str(total_num), non_zeros.shape, str(sparsity)))
+        # print("{}: {}, {}, {}, [{}]".format(name, str(num_nonzeros), str(total_num), non_zeros.shape, str(sparsity)))

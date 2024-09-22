@@ -22,12 +22,12 @@ def test_sparsity(model, column=True, channel=True, filter=True, kernel=False):
     comp_ratio = float((total_zeros + total_nonzeros)) / float(total_nonzeros)
     total_sparsity = total_zeros / (total_zeros + total_nonzeros)
 
-    print("---------------------------------------------------------------------------")
-    print("total number of zeros: {}, non-zeros: {}, zero sparsity is: {:.4f}".format(
-        total_zeros, total_nonzeros, total_zeros / (total_zeros + total_nonzeros)))
-    print("only consider conv layers, compression rate is: {:.4f}".format(
-        (total_zeros + total_nonzeros) / total_nonzeros))
-    print("===========================================================================\n\n")
+    # print("---------------------------------------------------------------------------")
+    # print("total number of zeros: {}, non-zeros: {}, zero sparsity is: {:.4f}".format(
+    #     total_zeros, total_nonzeros, total_zeros / (total_zeros + total_nonzeros)))
+    # print("only consider conv layers, compression rate is: {:.4f}".format(
+    #     (total_zeros + total_nonzeros) / total_nonzeros))
+    # print("===========================================================================\n\n")
 
     # --------------------- column sparsity --------------------
     if(column):
@@ -48,14 +48,14 @@ def test_sparsity(model, column=True, channel=True, filter=True, kernel=False):
                 total_column += column_num
                 total_empty_column += empty_column
             layer_cont += 1
-        print("---------------------------------------------------------------------------")
-        print("total number of zeros: {}, non-zeros: {}, zero sparsity is: {:.4f}".format(
-            total_zeros, total_nonzeros, total_zeros / (total_zeros + total_nonzeros)))
-        print("total number of column: {}, empty-column: {}, column sparsity is: {:.4f}".format(
-            total_column, total_empty_column, total_empty_column / total_column))
-        print("only consider conv layers, compression rate is: {:.4f}".format(
-            (total_zeros + total_nonzeros) / total_nonzeros))
-        print("===========================================================================\n\n")
+        # print("---------------------------------------------------------------------------")
+        # print("total number of zeros: {}, non-zeros: {}, zero sparsity is: {:.4f}".format(
+        #     total_zeros, total_nonzeros, total_zeros / (total_zeros + total_nonzeros)))
+        # print("total number of column: {}, empty-column: {}, column sparsity is: {:.4f}".format(
+        #     total_column, total_empty_column, total_empty_column / total_column))
+        # print("only consider conv layers, compression rate is: {:.4f}".format(
+        #     (total_zeros + total_nonzeros) / total_nonzeros))
+        # print("===========================================================================\n\n")
 
 
     # --------------------- channel sparsity --------------------
@@ -78,14 +78,14 @@ def test_sparsity(model, column=True, channel=True, filter=True, kernel=False):
                 total_channels += channel_num
                 total_empty_channels += empty_channels
             layer_cont += 1
-        print("---------------------------------------------------------------------------")
-        print("total number of zeros: {}, non-zeros: {}, zero sparsity is: {:.4f}".format(
-            total_zeros, total_nonzeros, total_zeros / (total_zeros + total_nonzeros)))
-        print("total number of channels: {}, empty-channels: {}, channel sparsity is: {:.4f}".format(
-            total_channels, total_empty_channels, total_empty_channels / total_channels))
-        print("only consider conv layers, compression rate is: {:.4f}".format(
-            (total_zeros + total_nonzeros) / total_nonzeros))
-        print("===========================================================================\n\n")
+        # print("---------------------------------------------------------------------------")
+        # print("total number of zeros: {}, non-zeros: {}, zero sparsity is: {:.4f}".format(
+        #     total_zeros, total_nonzeros, total_zeros / (total_zeros + total_nonzeros)))
+        # print("total number of channels: {}, empty-channels: {}, channel sparsity is: {:.4f}".format(
+        #     total_channels, total_empty_channels, total_empty_channels / total_channels))
+        # print("only consider conv layers, compression rate is: {:.4f}".format(
+        #     (total_zeros + total_nonzeros) / total_nonzeros))
+        # print("===========================================================================\n\n")
 
 
     # --------------------- filter sparsity --------------------
@@ -108,14 +108,14 @@ def test_sparsity(model, column=True, channel=True, filter=True, kernel=False):
                 total_filters += filter_num
                 total_empty_filters += empty_filters
             layer_cont += 1
-        print("---------------------------------------------------------------------------")
-        print("total number of zeros: {}, non-zeros: {}, zero sparsity is: {:.4f}".format(
-            total_zeros, total_nonzeros, total_zeros / (total_zeros + total_nonzeros)))
-        print("total number of filters: {}, empty-filters: {}, filter sparsity is: {:.4f}".format(
-            total_filters, total_empty_filters, total_empty_filters / total_filters))
-        print("only consider conv layers, compression rate is: {:.4f}".format(
-            (total_zeros + total_nonzeros) / total_nonzeros))
-        print("===========================================================================\n\n")
+        # print("---------------------------------------------------------------------------")
+        # print("total number of zeros: {}, non-zeros: {}, zero sparsity is: {:.4f}".format(
+        #     total_zeros, total_nonzeros, total_zeros / (total_zeros + total_nonzeros)))
+        # print("total number of filters: {}, empty-filters: {}, filter sparsity is: {:.4f}".format(
+        #     total_filters, total_empty_filters, total_empty_filters / total_filters))
+        # print("only consider conv layers, compression rate is: {:.4f}".format(
+        #     (total_zeros + total_nonzeros) / total_nonzeros))
+        # print("===========================================================================\n\n")
 
     # --------------------- kernel sparsity --------------------
     if(kernel):
@@ -142,14 +142,14 @@ def test_sparsity(model, column=True, channel=True, filter=True, kernel=False):
                 total_kernels += kernel_num
                 total_empty_kernels += empty_kernels
             layer_cont += 1
-        print("---------------------------------------------------------------------------")
-        print("total number of zeros: {}, non-zeros: {}, zero sparsity is: {:.4f}".format(
-            total_zeros, total_nonzeros, total_zeros / (total_zeros + total_nonzeros)))
-        print("total number of kernels: {}, empty-kernels: {}, kernel sparsity is: {:.4f}".format(
-            total_kernels, total_empty_kernels, total_empty_kernels / total_kernels))
-        print("only consider conv layers, compression rate is: {:.4f}".format(
-            (total_zeros + total_nonzeros) / total_nonzeros))
-        print("===========================================================================\n\n")
+        # print("---------------------------------------------------------------------------")
+        # print("total number of zeros: {}, non-zeros: {}, zero sparsity is: {:.4f}".format(
+        #     total_zeros, total_nonzeros, total_zeros / (total_zeros + total_nonzeros)))
+        # print("total number of kernels: {}, empty-kernels: {}, kernel sparsity is: {:.4f}".format(
+        #     total_kernels, total_empty_kernels, total_empty_kernels / total_kernels))
+        # print("only consider conv layers, compression rate is: {:.4f}".format(
+        #     (total_zeros + total_nonzeros) / total_nonzeros))
+        # print("===========================================================================\n\n")
     return comp_ratio, total_sparsity
 
 

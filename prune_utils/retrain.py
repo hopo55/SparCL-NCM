@@ -215,12 +215,12 @@ class SparseTraining(object):
             comp_ratio = 0
         total_sparsity = total_zeros / (total_zeros + total_nonzeros)
 
-        print("---------------------------------------------------------------------------")
-        print("total number of zeros: {}, non-zeros: {}, zero sparsity is: {:.4f}".format(
-            total_zeros, total_nonzeros, total_zeros / (total_zeros + total_nonzeros)))
-        print("only consider conv layers, compression rate is: {:.4f}".format(
-            (total_zeros + total_nonzeros) / total_nonzeros))
-        print("===========================================================================\n\n")
+        # print("---------------------------------------------------------------------------")
+        # print("total number of zeros: {}, non-zeros: {}, zero sparsity is: {:.4f}".format(
+        #     total_zeros, total_nonzeros, total_zeros / (total_zeros + total_nonzeros)))
+        # print("only consider conv layers, compression rate is: {:.4f}".format(
+        #     (total_zeros + total_nonzeros) / total_nonzeros))
+        # print("===========================================================================\n\n")
 
         return comp_ratio, total_sparsity
         
