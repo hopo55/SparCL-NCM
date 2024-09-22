@@ -14,8 +14,8 @@ def test_sparsity(model, column=True, channel=True, filter=True, kernel=False):
             total_zeros += zeros
             non_zeros = np.sum(weight.cpu().detach().numpy() != 0)
             total_nonzeros += non_zeros
-            print("(empty/total) weights of {}({}) is: ({}/{}). irregular sparsity is: {:.4f}".format(
-                name, layer_cont, zeros, zeros+non_zeros, zeros / (zeros+non_zeros)))
+            # print("(empty/total) weights of {}({}) is: ({}/{}). irregular sparsity is: {:.4f}".format(
+            #     name, layer_cont, zeros, zeros+non_zeros, zeros / (zeros+non_zeros)))
 
         layer_cont += 1
 
@@ -41,9 +41,9 @@ def test_sparsity(model, column=True, channel=True, filter=True, kernel=False):
                 column_num = weight2d.shape[1]
 
                 empty_column = np.sum(np.sum(np.absolute(weight2d.cpu().detach().numpy()), axis=0) == 0)
-                print("(empty/total) column of {}({}) is: ({}/{}). column sparsity is: {:.4f}".format(
-                    name, layer_cont, empty_column, weight.size()[1] * weight.size()[2] * weight.size()[3],
-                                        empty_column / column_num))
+                # print("(empty/total) column of {}({}) is: ({}/{}). column sparsity is: {:.4f}".format(
+                #     name, layer_cont, empty_column, weight.size()[1] * weight.size()[2] * weight.size()[3],
+                #                         empty_column / column_num))
 
                 total_column += column_num
                 total_empty_column += empty_column
@@ -72,8 +72,8 @@ def test_sparsity(model, column=True, channel=True, filter=True, kernel=False):
                 for i in range(channel_num):
                     if np.sum(np.absolute(weight[:, i, :, :].cpu().detach().numpy())) == 0:
                         empty_channels += 1
-                print("(empty/total) channel of {}({}) is: ({}/{}) ({}). channel sparsity is: {:.4f}".format(
-                    name, layer_cont, empty_channels, weight.size()[1], weight.size()[1]-empty_channels, empty_channels / channel_num))
+                # print("(empty/total) channel of {}({}) is: ({}/{}) ({}). channel sparsity is: {:.4f}".format(
+                #     name, layer_cont, empty_channels, weight.size()[1], weight.size()[1]-empty_channels, empty_channels / channel_num))
 
                 total_channels += channel_num
                 total_empty_channels += empty_channels
@@ -102,8 +102,8 @@ def test_sparsity(model, column=True, channel=True, filter=True, kernel=False):
                 for i in range(filter_num):
                     if np.sum(np.absolute(weight[i, :, :, :].cpu().detach().numpy())) == 0:
                         empty_filters += 1
-                print("(empty/total) filter of {}({}) is: ({}/{}) ({}). filter sparsity is: {:.4f} ({:.4f})".format(
-                    name, layer_cont, empty_filters, weight.size()[0], weight.size()[0]-empty_filters, empty_filters / filter_num, 1-(empty_filters / filter_num)))
+                # print("(empty/total) filter of {}({}) is: ({}/{}) ({}). filter sparsity is: {:.4f} ({:.4f})".format(
+                #     name, layer_cont, empty_filters, weight.size()[0], weight.size()[0]-empty_filters, empty_filters / filter_num, 1-(empty_filters / filter_num)))
 
                 total_filters += filter_num
                 total_empty_filters += empty_filters
@@ -136,8 +136,8 @@ def test_sparsity(model, column=True, channel=True, filter=True, kernel=False):
                     for j in range(weight.size()[1]):
                         if np.sum(np.absolute(weight3d[i, j, :])) == 0:
                             empty_kernels += 1
-                print("(empty/total) kernel of {}({}) is: ({}/{}) ({}). kernel sparsity is: {:.4f}".format(
-                    name, layer_cont, empty_kernels, kernel_num, kernel_num-empty_kernels, empty_kernels / kernel_num))
+                # print("(empty/total) kernel of {}({}) is: ({}/{}) ({}). kernel sparsity is: {:.4f}".format(
+                #     name, layer_cont, empty_kernels, kernel_num, kernel_num-empty_kernels, empty_kernels / kernel_num))
 
                 total_kernels += kernel_num
                 total_empty_kernels += empty_kernels

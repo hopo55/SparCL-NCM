@@ -915,7 +915,7 @@ def main():
             f.write("\n")
 
     # ------------- pre training ---------------------
-    print("==============pre training=================")
+    # print("==============pre training=================")
 
     prune_init(args, model)
     prune_apply_masks()  # if wanted to make sure the mask is applied in retrain

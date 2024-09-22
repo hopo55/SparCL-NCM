@@ -375,13 +375,13 @@ def weight_growing(args, name, pruned_weight_np, lower_bound_value, upper_bound_
         mask_fixed_params = mask_fixed_params.detach().cpu().numpy()
 
     if upper_bound_value == 0:
-        print("==> GROW: {}: to DENSE despite the sparsity type is \n".format(name))
+        # print("==> GROW: {}: to DENSE despite the sparsity type is \n".format(name))
         np_updated_mask = np.ones_like(pruned_weight_np, dtype=np.float32)
         updated_mask = torch.from_numpy(np_updated_mask).cuda()
         return updated_mask
 
     if upper_bound_value == lower_bound_value:
-        print("==> GROW: {}: no grow, keep the mask and do finetune \n".format(name))
+        # print("==> GROW: {}: no grow, keep the mask and do finetune \n".format(name))
         non_zeros_updated = pruned_weight_np != 0
         non_zeros_updated = non_zeros_updated.astype(np.float32)
         np_updated_mask = non_zeros_updated
@@ -438,7 +438,7 @@ def weight_growing(args, name, pruned_weight_np, lower_bound_value, upper_bound_
             weight = weight1d.reshape(shape)
             non_zeros_updated = weight != 0
             non_zeros_updated = non_zeros_updated.astype(np.float32)
-            print("==> GROW: {}: revise sparse mask to sparsity {}\n".format(name, target_sparsity))
+            # print("==> GROW: {}: revise sparse mask to sparsity {}\n".format(name, target_sparsity))
 
             # update mask
             # zero_mask = torch.from_numpy(non_zeros_updated).cuda()
@@ -534,7 +534,7 @@ def weight_growing(args, name, pruned_weight_np, lower_bound_value, upper_bound_
 
             mask_sparsity = 1 - (np.count_nonzero(np_updated_mask)) * 1.0 / np.size(pruned_weight_np)
 
-            print("==> GROW: {}: revise sparse mask to sparsity {}\n".format(name, mask_sparsity))
+            # print("==> GROW: {}: revise sparse mask to sparsity {}\n".format(name, mask_sparsity))
 
             return updated_mask
 
@@ -580,6 +580,6 @@ def weight_growing(args, name, pruned_weight_np, lower_bound_value, upper_bound_
 
         mask_sparsity = 1 - (np.count_nonzero(np_updated_mask)) * 1.0 / np.size(pruned_weight_np)
 
-        print("==> GROW: {}: revise sparse mask to sparsity {}\n".format(name, mask_sparsity))
+        # print("==> GROW: {}: revise sparse mask to sparsity {}\n".format(name, mask_sparsity))
 
         return updated_mask

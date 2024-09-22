@@ -67,10 +67,10 @@ class SparseTraining(object):
         else:
             self.logger = logger
 
-        self.logger.info("Command line:")
-        self.logger.info(' '.join(sys.argv))
-        self.logger.info("Args:")
-        self.logger.info(args)
+        # self.logger.info("Command line:")
+        # self.logger.info(' '.join(sys.argv))
+        # self.logger.info("Args:")
+        # self.logger.info(args)
 
         self.masks = {}
         self.gradient_masks = {}
@@ -204,8 +204,8 @@ class SparseTraining(object):
                 total_zeros += zeros
                 non_zeros = np.sum(weight.cpu().detach().numpy() != 0)
                 total_nonzeros += non_zeros
-                print("(empty/total) masks of {}({}) is: ({}/{}). irregular sparsity is: {:.4f}".format(
-                    name, layer_cont, zeros, zeros+non_zeros, zeros / (zeros+non_zeros)))
+                # print("(empty/total) masks of {}({}) is: ({}/{}). irregular sparsity is: {:.4f}".format(
+                #     name, layer_cont, zeros, zeros+non_zeros, zeros / (zeros+non_zeros)))
 
             layer_cont += 1
 
@@ -339,10 +339,10 @@ class SparseTraining(object):
                     sparsity = 1 - (num_nonzeros * 1.0) / total_num
                     np_orig_mask = self.masks[name].cpu().detach().numpy()
 
-                    print(("\n==> BEFORE UPDATE: {}: {}, {}, {}".format(name,
-                                                                    str(num_nonzeros),
-                                                                    str(total_num),
-                                                                    str(sparsity))))
+                    # print(("\n==> BEFORE UPDATE: {}: {}, {}, {}".format(name,
+                    #                                                 str(num_nonzeros),
+                    #                                                 str(total_num),
+                    #                                                 str(sparsity))))
 
                     ############## pruning #############
                     pruned_weight_np = None
@@ -351,7 +351,7 @@ class SparseTraining(object):
                         sparsity_type_list = (self.args.sp_admm_sparsity_type).split("+")
                         for i in range(len(sparsity_type_list)):
                             sparsity_type = sparsity_type_list[i]
-                            print("* sparsity type {} is {}".format(i, sparsity_type))
+                            # print("* sparsity type {} is {}".format(i, sparsity_type))
                             self.args.sp_admm_sparsity_type = sparsity_type
 
                             pruned_mask, pruned_weight = weight_pruning(self.args,
@@ -368,10 +368,10 @@ class SparseTraining(object):
 
                             non_zeros_prune = pruned_weight_np != 0
                             num_nonzeros_prune = np.count_nonzero(non_zeros_prune.astype(np.float32))
-                            print(("==> PRUNE: {}: {}, {}, {}".format(name,
-                                                             str(num_nonzeros_prune),
-                                                             str(total_num),
-                                                             str(1 - (num_nonzeros_prune * 1.0) / total_num))))
+                            # print(("==> PRUNE: {}: {}, {}, {}".format(name,
+                            #                                  str(num_nonzeros_prune),
+                            #                                  str(total_num),
+                            #                                  str(1 - (num_nonzeros_prune * 1.0) / total_num))))
 
                             self.masks[name] = pruned_mask.cuda()
 
@@ -482,10 +482,10 @@ class SparseTraining(object):
                     total_num = non_zeros.size
                     sparsity = 1 - (num_nonzeros * 1.0) / total_num
                     #self.logger.info("{}: {}, {}, {}".format(name, str(num_nonzeros), str(total_num), str(sparsity)))
-                    print(("{}: {}, {}, {}".format(name, str(num_nonzeros), str(total_num), str(sparsity))))
+                    # print(("{}: {}, {}, {}".format(name, str(num_nonzeros), str(total_num), str(sparsity))))
                     if sparsity < 0.1:
                         #self.logger.info("{}: sparsity too low, skip".format(name))
-                        print("{}: sparsity too low, skip".format(name))
+                        # print("{}: sparsity too low, skip".format(name))
                         continue
                     zero_mask = torch.from_numpy(non_zeros).cuda()
 

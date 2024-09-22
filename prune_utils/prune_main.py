@@ -60,11 +60,11 @@ def prune_harden(args, model, option=None):
     # if args.sp_global_weight_sparsity > 0:
     #     update_prune_ratio(args, model, prune_ratios, args.sp_global_weight_sparsity)
 
-    for key in prune_ratios:
-        print("prune_ratios[{}]:{}".format(key, prune_ratios[key]))
+    # for key in prune_ratios:
+    #     print("prune_ratios[{}]:{}".format(key, prune_ratios[key]))
 
     # self.logger.info("Hardened weight sparsity: name, num_nonzeros, total_num, sparsity")
-    print("Hardened weight sparsity: name, num_nonzeros, total_num, sparsity")
+    # print("Hardened weight sparsity: name, num_nonzeros, total_num, sparsity")
     first = True
     for (name, W) in model.named_parameters():
         if name not in prune_ratios:  # ignore layers that do not have rho
@@ -114,7 +114,7 @@ def prune_harden(args, model, option=None):
         num_nonzeros = np.count_nonzero(non_zeros)
         total_num = non_zeros.size
         sparsity = 1 - (num_nonzeros * 1.0) / total_num
-        print("{}: {}, {}, {}".format(name, str(num_nonzeros), str(total_num), str(sparsity)))
+        # print("{}: {}, {}, {}".format(name, str(num_nonzeros), str(total_num), str(sparsity)))
         # self.logger.info("{}: {}, {}, {}".format(name, str(num_nonzeros), str(total_num), str(sparsity)))
 
 
