@@ -2,7 +2,7 @@
 METHOD="derpp"     # "er" or "derpp"
 DATASET="seq-cifar10"
 DEVICE="Jetson"
-SPARSE=0.90
+SPARSE=0.75
 GLOBAL_BATCH_SIZE="32"
 GPU_ID=0
 PATH_TO_SPARCL=/home/ai/hs_park/SparCL-NCM # change to your own path
@@ -41,8 +41,7 @@ PKL_NAME="irr_${SPARSE}_mut_RM_${REMOVE_N}_${RM_EPOCH}"
 
 SEED=42
 # for SEED in 42 0 1 1234 777 9999 2021 7 3141 2048
-# for BUFFER_SIZE in 100 200 300 400 500
-for BUFFER_SIZE in 200 300 400 500
+for BUFFER_SIZE in 100 200 300 400 500
 do
     CUDA_VISIBLE_DEVICES=${GPU_ID} python3 -u main_sparse_train_w_data_gradient_efficient.py \
         --arch ${ARCH} --depth ${DEPTH} --optmzr sgd --batch-size ${GLOBAL_BATCH_SIZE} --lr ${INIT_LR} --lr-scheduler cosine --save-model ${SAVE_FOLDER} --epochs ${EPOCHS} --dataset ${DATASET} --seed ${SEED} --upper-bound ${UPPER_BOUND} --lower-bound ${LOWER_BOUND} --mask-update-decay-epoch ${MASK_UPDATE_DECAY_EPOCH} --sp-mask-update-freq ${SP_MASK_UPDATE_FREQ} --remark ${REMARK} ${PRUNE_ARGS} --sp-admm-sparsity-type=${SPARSITY_TYPE} --sp-config-file=${CONFIG_FILE} \
