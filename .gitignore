@@ -2,7 +2,13 @@
 checkpoints
 
 # jetons
-prune_utils/__pycache__
+prune_utils/__pycache__/
+
+prune_utils/__pycache__/__init__.cpython-36.pyc
+prune_utils/__pycache__/prune_main.cpython-36.pyc
+prune_utils/__pycache__/retrain.cpython-36.pyc
+prune_utils/__pycache__/utils_pr.cpython-36.pyc
+
 
 # default
 *.swp
@@ -97,4 +103,3 @@ dmypy.json
 cython_debug/
 wandb
 *.pyc
-prune_utils/__pycache__
