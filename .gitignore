@@ -1,6 +1,9 @@
 # checkpoints
 checkpoints
 
+# jetons
+prune_utils/__pycache__
+
 # default
 *.swp
 *.gif
