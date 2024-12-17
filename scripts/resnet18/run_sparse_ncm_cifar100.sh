@@ -1,12 +1,12 @@
 # Hyperparameter Settings
 METHOD="derpp"     # "er" or "derpp"
-DATASET="seq-cifar100"
-DEVICE="PC"
-BUFFER_SIZE=500
 SPARSE=0.75
-GLOBAL_BATCH_SIZE="32"
 GPU_ID=0
+DEVICE="PC"
 PATH_TO_SPARCL=/home/cal-06/heonsung/SparCL-NCM # change to your own path
+
+DATASET="seq-cifar100"
+GLOBAL_BATCH_SIZE="32"
 
 # magnitude-based 1 shot retraining
 ARCH="resnet" # 
