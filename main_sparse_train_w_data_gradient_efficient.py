@@ -192,6 +192,7 @@ if not os.path.exists(args.save_model):
 kwargs = {'num_workers': 1, 'pin_memory': True} if args.cuda else {}
 
 
+
 class CrossEntropyLossMaybeSmooth(nn.CrossEntropyLoss):
     ''' Calculate cross entropy loss, apply label smoothing if needed. '''
 

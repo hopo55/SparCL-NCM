@@ -1,12 +1,12 @@
 # Hyperparameter Settings
 METHOD="derpp"     # "er" or "derpp"
-DATASET="seq-cifar10"
+SPARSE=0.90
+GPU_ID=1
 DEVICE="PC"
-BUFFER_SIZE=500
-SPARSE=0.75
-GLOBAL_BATCH_SIZE="32"
-GPU_ID=0
 PATH_TO_SPARCL=/home/cal-06/heonsung/SparCL-NCM # change to your own path
+
+DATASET="seq-cifar10"
+GLOBAL_BATCH_SIZE="32"
 
 # magnitude-based 1 shot retraining
 ARCH="resnet" # 
@@ -32,16 +32,18 @@ mkdir -p ${SAVE_FOLDER}
 GRADIENT=1
 # ------- for overall sparsity ----------
 # ------- check retrain.py for more information ----------
-LOWER_BOUND="${SPARSE}-${SPARSE}-${SPARSE}"
-UPPER_BOUND="${SPARSE}-${SPARSE}-${SPARSE}"
+LOWER_BOUND="${SPARSE}-$(awk "BEGIN {printf \"%.2f\", ${SPARSE}+0.01}")-${SPARSE}"
+UPPER_BOUND="$(awk "BEGIN {printf \"%.2f\", ${SPARSE}-0.01}")-${SPARSE}-${SPARSE}"
 
 CONFIG_FILE="./profiles/resnet18_cifar/irr/resnet18_${SPARSE}.yaml"
 REMARK="irr_${SPARSE}_mut"
 LOG_NAME="${SPARSE}_${METHOD}_${GRADIENT}"
 PKL_NAME="irr_${SPARSE}_mut_RM_${REMOVE_N}_${RM_EPOCH}"
 
-# for SEED in 42 0 1 1234 777 9999 2021 7 3141 2048
-for SEED in 7 3141 2048
+SEED=42
+# BUFFER_SIZE=200
+
+for BUFFER_SIZE in 100 200 300 400 500
 do
     CUDA_VISIBLE_DEVICES=${GPU_ID} python3 -u main_sparse_train_w_data_gradient_efficient.py \
         --arch ${ARCH} --depth ${DEPTH} --optmzr sgd --batch-size ${GLOBAL_BATCH_SIZE} --lr ${INIT_LR} --lr-scheduler cosine --save-model ${SAVE_FOLDER} --epochs ${EPOCHS} --dataset ${DATASET} --seed ${SEED} --upper-bound ${UPPER_BOUND} --lower-bound ${LOWER_BOUND} --mask-update-decay-epoch ${MASK_UPDATE_DECAY_EPOCH} --sp-mask-update-freq ${SP_MASK_UPDATE_FREQ} --remark ${REMARK} ${PRUNE_ARGS} --sp-admm-sparsity-type=${SPARSITY_TYPE} --sp-config-file=${CONFIG_FILE} \
