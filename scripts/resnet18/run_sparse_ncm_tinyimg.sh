@@ -1,9 +1,9 @@
 # Hyperparameter Settings
 METHOD="derpp"     # "er" or "derpp"
-SPARSE=0.75
+SPARSE=0.25
 GPU_ID=1
 DEVICE="PC"
-PATH_TO_SPARCL=/home/cal-06/heonsung/SparCL-NCM # change to your own path
+PATH_TO_SPARCL=/mnt/sdb1/userHome/hspark/dev/SparCL-NCM # change to your own path
 
 DATASET="seq-tinyimg"
 GLOBAL_BATCH_SIZE="32"
@@ -21,19 +21,22 @@ SPARSITY_TYPE="irregular"
 MASK_UPDATE_DECAY_EPOCH="5-45"
 SP_MASK_UPDATE_FREQ="5"
 
+# REMOVE_N=3000
+# RM_EPOCH=20
+# GRADIENT=0.8
 REMOVE_N=0
 RM_EPOCH=-1
+GRADIENT=1
 ITER=1
 
 SAVE_FOLDER="checkpoints/resnet18/paper/gradient_effi/mutate_irr/${DATASET}/buffer_${BUFFER_SIZE}/"
 cd $PATH_TO_SPARCL
 mkdir -p ${SAVE_FOLDER}
 
-GRADIENT=1
 # ------- for overall sparsity ----------
 # ------- check retrain.py for more information ----------
-LOWER_BOUND="${SPARSE}-${SPARSE}-${SPARSE}"
-UPPER_BOUND="${SPARSE}-${SPARSE}-${SPARSE}"
+LOWER_BOUND="${SPARSE}-$(awk "BEGIN {printf \"%.2f\", ${SPARSE}+0.01}")-${SPARSE}"
+UPPER_BOUND="$(awk "BEGIN {printf \"%.2f\", ${SPARSE}-0.01}")-${SPARSE}-${SPARSE}"
 
 CONFIG_FILE="./profiles/resnet18_cifar/irr/resnet18_${SPARSE}.yaml"
 REMARK="irr_${SPARSE}_mut"

@@ -32,8 +32,8 @@ mkdir -p ${SAVE_FOLDER}
 GRADIENT=1
 # ------- for overall sparsity ----------
 # ------- check retrain.py for more information ----------
-LOWER_BOUND="${SPARSE}-${SPARSE}-${SPARSE}"
-UPPER_BOUND="${SPARSE}-${SPARSE}-${SPARSE}"
+LOWER_BOUND="${SPARSE}-$(awk "BEGIN {printf \"%.2f\", ${SPARSE}+0.01}")-${SPARSE}"
+UPPER_BOUND="$(awk "BEGIN {printf \"%.2f\", ${SPARSE}-0.01}")-${SPARSE}-${SPARSE}"
 
 CONFIG_FILE="./profiles/resnet18_cifar/irr/resnet18_${SPARSE}.yaml"
 REMARK="irr_${SPARSE}_mut"
