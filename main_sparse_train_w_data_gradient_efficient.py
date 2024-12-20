@@ -284,20 +284,20 @@ def train(model, trainset, criterion, scheduler, optimizer, epoch, t, buffer, da
     total = 0.
     # switch to train mode
     model.train()
-    start = time.time()
 
     # Get permutation to shuffle trainset
     trainset_permutation_inds = npr.permutation(
         np.arange(len(trainset.targets)))   #numpy random permutation
     batch_size = args.batch_size
-    end = time.time()
+    data_start = time.time()
 
     if ncm_classifier is not None:
         unique_target = np.unique(trainset.targets)
         ncm_classifier.reset_class_means(unique_target)
 
     for batch_idx, batch_start_ind in enumerate(range(0, len(trainset.targets), batch_size)):
-        data_time.update(time.time() - end)
+        data_time.update(time.time() - data_start)
+        batch_start = time.time()
 
         # prune_update_learning_rate(optimizer, epoch, args)
 
@@ -529,13 +529,12 @@ def train(model, trainset, criterion, scheduler, optimizer, epoch, t, buffer, da
             optimizer.zero_grad()
         prune_apply_masks()
 
-        batch_time.update(time.time() - end)
-        end = time.time()
+        batch_time.update(time.time() - batch_start)
 
         torch.cuda.synchronize()
         end_time = time.time()
-        inference_time = end_time - start_time
-        training_time.update(inference_time, n=inputs.size(0))
+        train_time = end_time - start_time
+        training_time.update(train_time)
 
         # Add training accuracy to dict
         index_stats = example_stats_train.get('train', [[], []])
@@ -573,9 +572,9 @@ def train(model, trainset, criterion, scheduler, optimizer, epoch, t, buffer, da
         acc = 100. * correct.item() / total
         top1.update(acc)
 
-    train_time = time.time() - start    # all dataset training time
+    # train_time = time.time() - start    # all dataset training time
 
-    return top1, training_time.avg
+    return top1, training_time.sum
 
 
 class AverageMeter(object):
@@ -628,7 +627,8 @@ def mask_classes(outputs, dataset, k):
             
 
 def test(model, dataset, ncm_classifier=None):
-    start = time.time()
+    inference_time = AverageMeter()
+
     model.eval()
     acc_list = np.zeros((dataset.N_TASKS, ))
     til_acc_list = np.zeros((dataset.N_TASKS, ))
@@ -637,6 +637,9 @@ def test(model, dataset, ncm_classifier=None):
             test_loss = 0
             correct = 0
             til_correct = 0
+
+            start = time.time()
+
             for data in test_loader:
                 img, target = data
                 # print(f"\tTest classes"+str(np.unique(target)))
@@ -668,7 +671,9 @@ def test(model, dataset, ncm_classifier=None):
             til_acc_list[task] = til_acc
             print(f"Task {task}, Average loss {test_loss:.4f}, Class inc Accuracy {acc:.3f}, Task inc Accuracy {til_acc:.3f}")
 
-    inf_time = time.time() - start    # all dataset training time
+            inf_time = time.time() - start    # all dataset test time
+
+            inference_time.update(inf_time)
 
     return acc_list, til_acc_list, inf_time
 
@@ -942,7 +947,6 @@ def main():
     train_acc = np.zeros((dataset.N_TASKS, args.iter))
     test_acc = np.zeros((dataset.N_TASKS, args.iter))
     train_time = AverageMeter()
-    inf_time = AverageMeter()
 
     # print('*'*8)
     # print('*'*8)
@@ -1034,6 +1038,7 @@ def main():
             else:
                 cl_mask = None
 
+            # Train
             for epoch in range(int(args.epochs/dataset.N_TASKS)):
                 prune_update(epoch)
                 optimizer.zero_grad()
@@ -1122,8 +1127,6 @@ def main():
                     acc_list, til_acc_list, inference_time = evaluate(model, dataset, ncm_classifier=ncm_classifier)
                     # acc_list, til_acc_list, inference_time = test(model, dataset, ncm_classifier=ncm_classifier)
                     
-                    inf_time.update(inference_time)
-
                     prec1 = sum(acc_list) / (t+1)
                     til_prec1 = sum(til_acc_list) / (t+1)
                     acc_matrix[t] = acc_list
@@ -1176,7 +1179,7 @@ def main():
                 wandb.log({"Task" + str(n) + "Test Acc": acc_list[n]})
 
     wandb.log({"Training Time": train_time.avg})    # sec
-    wandb.log({"Inference Time": inf_time.avg})     # sec
+    wandb.log({"Inference Time": inference_time})     # sec
     
     for t in range(dataset.N_TASKS):
         # train
