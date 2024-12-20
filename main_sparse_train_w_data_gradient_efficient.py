@@ -182,7 +182,7 @@ log_name = args.dataset + '-' + args.device + '-' + args.replay_method + "-" + s
 # if args.ncm: log_name += '-ncm'
 
 wandb.login()
-wandb.init(config=args, project='[IEEE Access] SparCL', name=log_name, reinit=True)
+wandb.init(config=args, project='[IEEE Access] SparCL-NCM', name=log_name, reinit=True)
 
 args.cuda = not args.no_cuda and torch.cuda.is_available()
 
