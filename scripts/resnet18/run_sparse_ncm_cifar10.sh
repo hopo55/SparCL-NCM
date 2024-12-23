@@ -24,10 +24,11 @@ SP_MASK_UPDATE_FREQ="5"
 REMOVE_N=3000
 RM_EPOCH=20
 GRADIENT=0.8
+ITER=10
 # REMOVE_N=0
 # RM_EPOCH=-1
 # GRADIENT=1
-ITER=1
+# ITER=1
 
 SAVE_FOLDER="checkpoints/resnet18/paper/gradient_effi/mutate_irr/${DATASET}/buffer_${BUFFER_SIZE}/"
 cd $PATH_TO_SPARCL
