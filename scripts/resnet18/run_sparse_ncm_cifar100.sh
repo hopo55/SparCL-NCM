@@ -1,8 +1,8 @@
 # Hyperparameter Settings
 METHOD="derpp"     # "er" or "derpp"
 SPARSE=0.75
-GPU_ID=1
-DEVICE="PC"
+GPU_ID=0
+DEVICE="Odroid"
 PATH_TO_SPARCL=/home/cal-06/heonsung/SparCL-NCM # change to your own path
 
 DATASET="seq-cifar100"
