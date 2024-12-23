@@ -6,7 +6,7 @@ DEVICE="Jetson"
 PATH_TO_SPARCL=/home/ai/hs_park/SparCL-NCM # change to your own path
 
 DATASET="seq-cifar10"
-GLOBAL_BATCH_SIZE="256"
+GLOBAL_BATCH_SIZE="128"
 
 # magnitude-based 1 shot retraining
 ARCH="resnet" # 
@@ -52,4 +52,4 @@ do
         --log-filename=${SAVE_FOLDER}/seed_${SEED}_${LOG_NAME}.txt --buffer-size=$BUFFER_SIZE --replay_method $METHOD --buffer_weight 0.1 --buffer_weight_beta 0.5 \
         --use_cl_mask --gradient_sparse=$GRADIENT --remove-n=$REMOVE_N --keep-lowest-n 0 --remove-data-epoch=$RM_EPOCH --output-dir ${SAVE_FOLDER} --output-name=${PKL_NAME} --iter $ITER --ncm --gradient_efficient_mix \
         --device $DEVICE --sparse_ratio $SPARSE --rand-seed
-done
+done 
