@@ -3,7 +3,7 @@ METHOD="derpp"     # "er" or "derpp"
 SPARSE=0.75
 GPU_ID=1
 DEVICE="PC"
-PATH_TO_SPARCL=/mnt/sdb1/userHome/hspark/dev/SparCL-NCM # change to your own path
+PATH_TO_SPARCL=/home/cal-06/heonsung/SparCL-NCM # change to your own path
 
 DATASET="seq-tinyimg"
 GLOBAL_BATCH_SIZE="32"
