@@ -53,5 +53,5 @@ do
         --arch ${ARCH} --depth ${DEPTH} --optmzr sgd --batch-size ${GLOBAL_BATCH_SIZE} --lr ${INIT_LR} --lr-scheduler cosine --save-model ${SAVE_FOLDER} --epochs ${EPOCHS} --dataset ${DATASET} --seed ${SEED} --upper-bound ${UPPER_BOUND} --lower-bound ${LOWER_BOUND} --mask-update-decay-epoch ${MASK_UPDATE_DECAY_EPOCH} --sp-mask-update-freq ${SP_MASK_UPDATE_FREQ} --remark ${REMARK} ${PRUNE_ARGS} --sp-admm-sparsity-type=${SPARSITY_TYPE} --sp-config-file=${CONFIG_FILE} \
         --log-filename=${SAVE_FOLDER}/seed_${SEED}_${LOG_NAME}.txt --buffer-size=$BUFFER_SIZE --replay_method $METHOD --buffer_weight 0.1 --buffer_weight_beta 0.5 \
         --use_cl_mask --gradient_sparse=$GRADIENT --remove-n=$REMOVE_N --keep-lowest-n 0 --remove-data-epoch=$RM_EPOCH --output-dir ${SAVE_FOLDER} --output-name=${PKL_NAME} --iter $ITER --ncm --gradient_efficient_mix \
-        --device $DEVICE --sparse_ratio $SPARSE
+        --device $DEVICE --sparse_ratio $SPARSE --rand-seed
 done
