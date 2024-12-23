@@ -147,8 +147,10 @@ class NCM(nn.Module):
         self.num_classes = num_classes
         self.feature_dim = feature_dim
 
-        self.class_means = torch.zeros((num_classes, feature_dim)).cuda()
-        self.cK = torch.zeros(num_classes).cuda()
+        # self.class_means = torch.zeros((num_classes, feature_dim)).cuda()
+        # self.cK = torch.zeros(num_classes).cuda()
+        self.class_means = torch.zeros((num_classes, feature_dim))
+        self.cK = torch.zeros(num_classes)
 
     def forward(self, x):
         normalized_features = F.normalize(x, p=2, dim=1)

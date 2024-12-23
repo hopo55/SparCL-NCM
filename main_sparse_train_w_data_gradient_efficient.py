@@ -181,7 +181,7 @@ args = parser.parse_args()
 log_name = args.dataset + '-' + args.device + '-' + args.replay_method + "-" + str(args.sparse_ratio)
 # if args.ncm: log_name += '-ncm'
 
-wandb.login()
+wandb.login(key="1623b52d57b487ee9678660beb03f2f698fcbeb0")
 wandb.init(config=args, project='[IEEE Access] SparCL-NCM', name=log_name, reinit=True)
 
 args.cuda = not args.no_cuda and torch.cuda.is_available()
@@ -318,14 +318,14 @@ def train(model, trainset, criterion, scheduler, optimizer, epoch, t, buffer, da
         targets = torch.LongTensor(np.array(trainset.targets)[batch_inds].tolist())
 
         # Map to available device
-        inputs = inputs.cuda(non_blocking=True)
-        targets = targets.cuda(non_blocking=True)
+        # inputs = inputs.cuda(non_blocking=True)
+        # targets = targets.cuda(non_blocking=True)
         if args.mixup:
             inputs, target_a, target_b, lam = mixup_data(inputs, targets, args.alpha)
 
 
         # Training Time
-        torch.cuda.synchronize()
+        # torch.cuda.synchronize()
         start_time = time.time()
 
         # Forward propagation, compute loss, get predictions
@@ -531,7 +531,7 @@ def train(model, trainset, criterion, scheduler, optimizer, epoch, t, buffer, da
 
         batch_time.update(time.time() - batch_start)
 
-        torch.cuda.synchronize()
+        # torch.cuda.synchronize()
         end_time = time.time()
         train_time = end_time - start_time
         training_time.update(train_time)
@@ -843,6 +843,7 @@ def get_hms(seconds):
 
 def main():
     if args.cuda:
+        print("=======GPU==========")
         if args.arch == "vgg":
             if args.depth == 19:
                 model = vgg19(dataset=args.dataset)
@@ -877,6 +878,34 @@ def main():
         if args.multi_gpu:
             model = torch.nn.DataParallel(model)
         model.cuda()
+    else:
+        if args.arch == "resnet":
+            if args.dataset == 'seq-cifar10':
+                nclasses = 10
+            elif args.dataset == 'seq-cifar100':
+                nclasses = 100
+            elif args.dataset == 'seq-tinyimg':
+                nclasses = 200
+
+            if args.depth == 18:
+                model = resnet18(dataset=args.dataset)  # resnet-18
+                if args.ncm:
+                    model.classifier = nn.Identity()
+                    ncm_classifier = NCM(num_classes=nclasses)
+                else:
+                    ncm_classifier = None
+            elif args.depth == 20:
+                model = resnet20(dataset=args.dataset)
+            elif args.depth == 32:
+                model = resnet32(depth=32, dataset=args.dataset)
+            else:
+                sys.exit("resnet doesn't implement those depth!")
+        else:
+            sys.exit("wrong arch!")
+        
+        model = model.to("cpu")
+        print("Model is set to run on CPU.")
+
     
     criterion = nn.CrossEntropyLoss().cuda()
     criterion.__init__(reduce=False)

@@ -186,7 +186,8 @@ class SparseTraining(object):
                 gradient = W.grad.cpu().detach().numpy()
                 non_zeros = gradient != 0
                 non_zeros = non_zeros.astype(np.float32)
-                zero_mask = torch.from_numpy(non_zeros).cuda()
+                # zero_mask = torch.from_numpy(non_zeros).cuda()
+                zero_mask = torch.from_numpy(non_zeros)
                 self.gradient_masks[name] = zero_mask
 
     def test_mask_sparsity(self, column=False, channel=False, filter=False, kernel=False):
@@ -363,7 +364,8 @@ class SparseTraining(object):
                             # pruned_mask_np = pruned_mask.cpu().detach().numpy()
                             pruned_weight_np = pruned_weight.cpu().detach().numpy()
 
-                            W.mul_(pruned_mask.cuda())
+                            # W.mul_(pruned_mask.cuda())
+                            W.mul_(pruned_mask)
 
 
                             non_zeros_prune = pruned_weight_np != 0
@@ -373,7 +375,8 @@ class SparseTraining(object):
                             #                                  str(total_num),
                             #                                  str(1 - (num_nonzeros_prune * 1.0) / total_num))))
 
-                            self.masks[name] = pruned_mask.cuda()
+                            # self.masks[name] = pruned_mask.cuda()
+                            self.masks[name] = pruned_mask
 
 
                             if self.args.gradient_efficient:
@@ -487,7 +490,8 @@ class SparseTraining(object):
                         #self.logger.info("{}: sparsity too low, skip".format(name))
                         # print("{}: sparsity too low, skip".format(name))
                         continue
-                    zero_mask = torch.from_numpy(non_zeros).cuda()
+                    # zero_mask = torch.from_numpy(non_zeros).cuda()
+                    zero_mask = torch.from_numpy(non_zeros)
 
                     self.masks[name] = zero_mask
 

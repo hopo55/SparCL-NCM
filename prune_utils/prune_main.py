@@ -76,7 +76,8 @@ def prune_harden(args, model, option=None):
             first = False
         else:
             raise Exception("not implmented yet")
-        W.data = cuda_pruned_weights.cuda().type(W.dtype)  # replace the data field in variable
+        # W.data = cuda_pruned_weights.cuda().type(W.dtype)  # replace the data field in variable
+        W.data = cuda_pruned_weights.type(W.dtype)  # replace the data field in variable
 
         if args.sp_admm_sparsity_type == "block":
             block = eval(args.sp_admm_block)

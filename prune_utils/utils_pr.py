@@ -454,7 +454,8 @@ def weight_growing(args, name, pruned_weight_np, lower_bound_value, upper_bound_
             assert (False)
 
         np_updated_mask = np_updated_zero_one_mask
-        updated_mask = torch.from_numpy(np_updated_mask).cuda()
+        # updated_mask = torch.from_numpy(np_updated_mask).cuda()
+        updated_mask = torch.from_numpy(np_updated_mask)
 
         return updated_mask
 

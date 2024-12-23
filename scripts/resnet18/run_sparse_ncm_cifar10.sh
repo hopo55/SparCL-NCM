@@ -1,12 +1,12 @@
 # Hyperparameter Settings
-METHOD="derpp"     # "er" or "derpp"
+METHOD="er"     # "er" or "derpp"
 SPARSE=0.25
-GPU_ID=1
-DEVICE="PC"
-PATH_TO_SPARCL=/home/cal-06/heonsung/SparCL-NCM # change to your own path
+GPU_ID=0
+DEVICE="Odroid"
+PATH_TO_SPARCL=/home/odroid/hs/SparCL-NCM # change to your own path
 
 DATASET="seq-cifar10"
-GLOBAL_BATCH_SIZE="32"
+GLOBAL_BATCH_SIZE="256"
 
 # magnitude-based 1 shot retraining
 ARCH="resnet" # 
@@ -45,11 +45,11 @@ LOG_NAME="${SPARSE}_${METHOD}_${GRADIENT}"
 PKL_NAME="irr_${SPARSE}_mut_RM_${REMOVE_N}_${RM_EPOCH}"
 
 SEED=42
-for BUFFER_SIZE in 100 200 300 400 500
+for BUFFER_SIZE in 100
 do
     CUDA_VISIBLE_DEVICES=${GPU_ID} python3 -u main_sparse_train_w_data_gradient_efficient.py \
         --arch ${ARCH} --depth ${DEPTH} --optmzr sgd --batch-size ${GLOBAL_BATCH_SIZE} --lr ${INIT_LR} --lr-scheduler cosine --save-model ${SAVE_FOLDER} --epochs ${EPOCHS} --dataset ${DATASET} --seed ${SEED} --upper-bound ${UPPER_BOUND} --lower-bound ${LOWER_BOUND} --mask-update-decay-epoch ${MASK_UPDATE_DECAY_EPOCH} --sp-mask-update-freq ${SP_MASK_UPDATE_FREQ} --remark ${REMARK} ${PRUNE_ARGS} --sp-admm-sparsity-type=${SPARSITY_TYPE} --sp-config-file=${CONFIG_FILE} \
         --log-filename=${SAVE_FOLDER}/seed_${SEED}_${LOG_NAME}.txt --buffer-size=$BUFFER_SIZE --replay_method $METHOD --buffer_weight 0.1 --buffer_weight_beta 0.5 \
         --use_cl_mask --gradient_sparse=$GRADIENT --remove-n=$REMOVE_N --keep-lowest-n 0 --remove-data-epoch=$RM_EPOCH --output-dir ${SAVE_FOLDER} --output-name=${PKL_NAME} --iter $ITER --ncm --gradient_efficient_mix \
-        --device $DEVICE --sparse_ratio $SPARSE
+        --device $DEVICE --sparse_ratio $SPARSE --rand-seed
 done
