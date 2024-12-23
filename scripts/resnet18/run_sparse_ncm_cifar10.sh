@@ -1,12 +1,12 @@
 # Hyperparameter Settings
 METHOD="derpp"     # "er" or "derpp"
 SPARSE=0.25
-GPU_ID=1
+GPU_ID=0
 DEVICE="Jetson"
 PATH_TO_SPARCL=/home/ai/hs_park/SparCL-NCM # change to your own path
 
 DATASET="seq-cifar10"
-GLOBAL_BATCH_SIZE="32"
+GLOBAL_BATCH_SIZE="256"
 
 # magnitude-based 1 shot retraining
 ARCH="resnet" # 
