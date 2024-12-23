@@ -1,6 +1,6 @@
 # Hyperparameter Settings
 METHOD="derpp"     # "er" or "derpp"
-SPARSE=0.50
+SPARSE=0.90
 GPU_ID=1
 DEVICE="PC"
 PATH_TO_SPARCL=/home/cal-06/heonsung/SparCL-NCM # change to your own path
