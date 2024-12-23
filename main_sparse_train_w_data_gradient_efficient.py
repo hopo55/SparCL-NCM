@@ -1190,11 +1190,13 @@ def main():
         std_test_acc = np.std(test_acc[t])
 
         # Train Accuracy
-        wandb.log({"Task Train Acc": avg_train_acc})
-        print("Task {0} Train Acc: {1:.4f}±{2:.2f}".format(t, avg_train_acc, std_train_acc))
+        wandb.log({"Task Train Acc": round(avg_train_acc, 2)})
+        wandb.log({"Task Train Std": round(std_train_acc, 2)})
+        print("Task {0} Train Acc: {1:.2f}±{2:.2f}".format(t, avg_train_acc, std_train_acc))
         # Test Accuracy
-        wandb.log({"Task Test Acc": avg_test_acc})
-        print("Task {0} Test Acc: {1:.4f}±{2:.2f}".format(t, avg_test_acc, std_test_acc))
+        wandb.log({"Task Test Acc": round(avg_test_acc, 2)})
+        wandb.log({"Task Test Std": round(std_test_acc, 2)})
+        print("Task {0} Test Acc: {1:.2f}±{2:.2f}".format(t, avg_test_acc, std_test_acc))
 
 
 if __name__ == '__main__':
