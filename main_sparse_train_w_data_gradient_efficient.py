@@ -947,6 +947,7 @@ def main():
     train_acc = np.zeros((dataset.N_TASKS, args.iter))
     test_acc = np.zeros((dataset.N_TASKS, args.iter))
     train_time = AverageMeter()
+    inference_time = AverageMeter()
 
     # print('*'*8)
     # print('*'*8)
@@ -1124,7 +1125,7 @@ def main():
                     show_mask_sparsity()
 
                 if epoch % args.test_epoch_interval == 0 or epoch == (int(args.epochs/dataset.N_TASKS)-1):
-                    acc_list, til_acc_list, inference_time = evaluate(model, dataset, ncm_classifier=ncm_classifier)
+                    acc_list, til_acc_list, inf_time = evaluate(model, dataset, ncm_classifier=ncm_classifier)
                     # acc_list, til_acc_list, inference_time = test(model, dataset, ncm_classifier=ncm_classifier)
                     
                     prec1 = sum(acc_list) / (t+1)
@@ -1169,34 +1170,44 @@ def main():
             torch.save(model.state_dict(), filename)
 
             # Test
-            acc_list, til_acc_list, inference_time = test(model, dataset, ncm_classifier=ncm_classifier)
-            prec1 =acc_list[t]
+            acc_list, til_acc_list, inf_time = test(model, dataset, ncm_classifier=ncm_classifier)
+            # prec1 =acc_list[t]
+            prec1 = sum(acc_list) / (t+1)
 
-            train_acc[t][n_iter] = acc.avg
-            test_acc[t][n_iter] = prec1
+            # train_acc[t][n_iter] = acc.avg
+            # test_acc[t][n_iter] = prec1
+            print("*"*20)
+            print("Task Train Acc: ", round(acc.avg, 2))
+            print("Task Test Acc: ", round(prec1, 2))
+            print("*"*20)
 
-            for n in range(t):
+            wandb.log({"Task Train Acc": round(acc.avg, 2)})
+            wandb.log({"Task Test Acc": round(prec1, 2)})
+
+            for n in range(dataset.N_TASKS):
                 wandb.log({"Task" + str(n) + "Test Acc": acc_list[n]})
 
-    wandb.log({"Training Time": train_time.avg})    # sec
-    wandb.log({"Inference Time": inference_time})     # sec
-    
-    for t in range(dataset.N_TASKS):
-        # train
-        avg_train_acc = np.mean(train_acc[t])
-        std_train_acc = np.std(train_acc[t])
-        # test
-        avg_test_acc = np.mean(test_acc[t])
-        std_test_acc = np.std(test_acc[t])
+            inference_time.update(inf_time)
 
-        # Train Accuracy
-        wandb.log({"Task Train Acc": round(avg_train_acc, 2)})
-        wandb.log({"Task Train Std": round(std_train_acc, 2)})
-        print("Task {0} Train Acc: {1:.2f}±{2:.2f}".format(t, avg_train_acc, std_train_acc))
-        # Test Accuracy
-        wandb.log({"Task Test Acc": round(avg_test_acc, 2)})
-        wandb.log({"Task Test Std": round(std_test_acc, 2)})
-        print("Task {0} Test Acc: {1:.2f}±{2:.2f}".format(t, avg_test_acc, std_test_acc))
+    wandb.log({"Training Time": train_time.avg})    # sec
+    wandb.log({"Inference Time": inference_time.avg})     # sec
+    
+    # for t in range(dataset.N_TASKS):
+    #     # train
+    #     avg_train_acc = np.mean(train_acc[t])
+    #     std_train_acc = np.std(train_acc[t])
+    #     # test
+    #     avg_test_acc = np.mean(test_acc[t])
+    #     std_test_acc = np.std(test_acc[t])
+
+    #     # Train Accuracy
+    #     wandb.log({"Task Train Acc": round(avg_train_acc, 2)})
+    #     wandb.log({"Task Train Std": round(std_train_acc, 2)})
+    #     print("Task {0} Train Acc: {1:.2f}±{2:.2f}".format(t, avg_train_acc, std_train_acc))
+    #     # Test Accuracy
+    #     wandb.log({"Task Test Acc": round(avg_test_acc, 2)})
+    #     wandb.log({"Task Test Std": round(std_test_acc, 2)})
+    #     print("Task {0} Test Acc: {1:.2f}±{2:.2f}".format(t, avg_test_acc, std_test_acc))
 
 
 if __name__ == '__main__':

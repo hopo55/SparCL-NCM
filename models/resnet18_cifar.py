@@ -176,7 +176,7 @@ class NCM(nn.Module):
         #     if self.cK[i] > 0:
         #         self.class_means.data[i] /= self.cK[i]
 
-    def classification(sefl, distances):
+    def classification(self, distances):
         # exp_neg_distances = torch.exp(distances)
         # outputs = F.softmax(exp_neg_distances, dim=1)
         # outputs = F.softmax(distances, dim=1)
